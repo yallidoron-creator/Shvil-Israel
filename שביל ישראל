@@ -1,0 +1,1408 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>שביל ישראל | הדרום</title>
+<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;700;900&family=Heebo:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --sand:#E8D5B0;--tc:#C4612A;--rust:#8B3A1A;
+  --sky:#6BA4C4;--sage:#7A9B6E;--dark:#0E0904;
+  --cream:#F5EDD8;--orange:#E8873A;--wt:#F0EDE4;--bt:#4A7FB5;
+  --panel:rgba(10,6,1,0.97);--gold:#D4A843;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Heebo',sans-serif;background:var(--dark);color:var(--cream);height:100vh;overflow:hidden;}
+
+/* HEADER */
+.hdr{position:fixed;inset:0 0 auto 0;z-index:3000;height:54px;background:rgba(8,4,0,.97);backdrop-filter:blur(20px);border-bottom:1px solid rgba(196,97,42,.22);display:flex;align-items:center;justify-content:space-between;padding:0 1rem;}
+.logo{display:flex;align-items:center;gap:8px;}
+.tm{display:flex;gap:2px;}.tm span{width:5px;height:20px;border-radius:2px;}
+.tm .w{background:var(--wt);}.tm .b{background:var(--bt);}.tm .o{background:var(--orange);}
+.lt{font-family:'Frank Ruhl Libre',serif;font-size:.88rem;font-weight:700;line-height:1.1;}
+.ls{font-size:.55rem;color:var(--orange);}
+.nav{display:flex;gap:2px;}
+.nb{padding:4px 10px;border-radius:14px;border:1px solid transparent;cursor:pointer;font-family:'Heebo',sans-serif;font-size:.7rem;font-weight:500;transition:all .2s;background:transparent;color:var(--sand);white-space:nowrap;}
+.nb:hover{border-color:var(--tc);color:var(--orange);}
+.nb.on{background:var(--tc);color:var(--cream);border-color:var(--tc);}
+
+.wrap{padding-top:54px;height:100vh;}
+.view{display:none;height:calc(100vh - 54px);}
+.view.on{display:flex;}
+
+/* ══ MAP ══ */
+#vmap{position:relative;overflow:hidden;}
+#spni-map{position:absolute;inset:0 0 0 0;width:calc(100% - 290px);height:100%;border:none;z-index:1;}
+
+/* right sections panel – always visible, no toggle */
+.map-sec-panel{
+  position:absolute;top:0;bottom:0;right:0;width:290px;z-index:500;
+  background:rgba(8,4,0,.96);border-left:1px solid rgba(196,97,42,.22);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.msp-head{
+  padding:8px 13px 6px;border-bottom:1px solid rgba(196,97,42,.2);
+  font-family:'Frank Ruhl Libre',serif;font-size:.82rem;color:var(--orange);
+  flex-shrink:0;display:flex;align-items:center;justify-content:space-between;
+}
+.msp-sub{font-size:.55rem;color:var(--sand);opacity:.5;font-family:'Heebo',sans-serif;}
+.dir-toggle{display:flex;gap:3px;}
+.dtb{padding:2px 7px;border-radius:8px;border:1px solid rgba(196,97,42,.25);background:transparent;color:var(--sand);font-size:.6rem;cursor:pointer;font-family:'Heebo',sans-serif;transition:all .15s;}
+.dtb.on{background:var(--tc);color:white;border-color:var(--tc);}
+.msp-list{flex:1;overflow-y:auto;padding:3px 0;}
+.msp-list::-webkit-scrollbar{width:3px;}
+.msp-list::-webkit-scrollbar-thumb{background:rgba(196,97,42,.25);}
+.msp-item{padding:7px 11px;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;transition:all .15s;}
+.msp-item:hover,.msp-item.on{background:rgba(196,97,42,.14);}
+.msp-item.on{border-right:3px solid var(--tc);}
+.msp-num{font-size:.52rem;color:var(--orange);font-weight:700;margin-bottom:1px;}
+.msp-name{font-size:.74rem;color:var(--cream);font-weight:500;margin-bottom:2px;}
+.msp-km{font-size:.6rem;color:var(--sand);}
+.msp-tags{display:flex;gap:3px;flex-wrap:wrap;margin-top:4px;}
+.msp-tag{padding:1px 5px;border-radius:4px;font-size:.52rem;font-weight:500;}
+
+/* icon bar – POI only (no sections toggle) */
+.map-icon-bar{
+  position:absolute;top:10px;right:300px;z-index:600;
+  display:flex;flex-direction:column;gap:6px;
+}
+.mib-btn{
+  width:44px;height:44px;border-radius:13px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  background:rgba(8,4,0,.92);border:1px solid rgba(196,97,42,.25);
+  backdrop-filter:blur(12px);transition:all .2s;cursor:pointer;
+}
+.mib-btn .mi{font-size:1.3rem;line-height:1;}
+.mib-btn .ml{font-size:.4rem;color:rgba(232,213,176,.4);}
+.mib-btn:hover,.mib-btn.on{background:rgba(196,97,42,.2);border-color:var(--tc);}
+.mib-btn.on .ml{color:var(--orange);}
+
+/* POI panel – opens to the LEFT of icon bar */
+.poi-panel{
+  position:absolute;top:0;bottom:0;right:354px;width:260px;z-index:490;
+  background:var(--panel);border:1px solid rgba(196,97,42,.25);border-radius:14px 0 0 14px;
+  display:none;flex-direction:column;overflow-y:auto;
+  box-shadow:-8px 0 32px rgba(0,0,0,.5);
+}
+.pp-head{padding:10px 12px 7px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--panel);z-index:2;}
+.pp-hl{display:flex;align-items:center;gap:7px;}
+.pp-ico{font-size:1.5rem;}
+.pp-title{font-family:'Frank Ruhl Libre',serif;font-size:.85rem;color:var(--orange);}
+.pp-sub{font-size:.57rem;color:var(--sand);opacity:.6;}
+.pp-x{background:rgba(255,255,255,.06);border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;color:var(--sand);font-size:.65rem;display:flex;align-items:center;justify-content:center;transition:background .2s;flex-shrink:0;}
+.pp-x:hover{background:rgba(196,97,42,.35);}
+.poi-card{margin:5px 7px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:10px;}
+.pc-name{font-size:.78rem;font-weight:600;color:var(--cream);margin-bottom:2px;}
+.pc-sec{font-size:.56rem;color:var(--orange);margin-bottom:3px;}
+.pc-info{font-size:.68rem;color:var(--sand);line-height:1.5;}
+.pc-badge{display:inline-block;padding:2px 6px;border-radius:5px;font-size:.55rem;font-weight:500;margin-top:4px;}
+.pp-alert{margin:5px 7px 10px;padding:8px 9px;border-radius:9px;font-size:.65rem;line-height:1.5;}
+
+/* section tooltip inside panel */
+.msp-tooltip{background:rgba(12,6,0,.98);border-top:2px solid var(--tc);padding:11px 12px;font-family:'Heebo',sans-serif;flex-shrink:0;}
+
+/* SCROLL VIEWS */
+.scroll-view{flex-direction:column;overflow-y:auto;background:linear-gradient(158deg,#0d1208,#0a1520);padding:1.4rem;}
+.iw{max-width:1100px;margin:0 auto;width:100%;}
+.ivt{font-family:'Frank Ruhl Libre',serif;font-size:1.7rem;font-weight:900;text-align:center;margin-bottom:.25rem;}
+.ivs{text-align:center;color:var(--sand);margin-bottom:1.4rem;font-size:.77rem;}
+.ic{background:rgba(255,255,255,.04);border:1px solid rgba(196,97,42,.2);border-radius:14px;padding:1.1rem;margin-bottom:1.1rem;}
+.ic h3{font-family:'Frank Ruhl Libre',serif;font-size:.95rem;color:var(--orange);margin-bottom:.75rem;}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:.9rem;}
+
+/* TOOLTIP HOVER for truncated text */
+[data-tip]{position:relative;cursor:help;}
+[data-tip]:hover::after{
+  content:attr(data-tip);
+  position:absolute;bottom:calc(100% + 6px);right:0;
+  background:rgba(10,5,0,.98);border:1px solid rgba(196,97,42,.4);
+  color:var(--cream);font-size:.72rem;line-height:1.55;
+  padding:8px 11px;border-radius:9px;white-space:pre-wrap;max-width:320px;
+  z-index:9999;pointer-events:none;font-family:'Heebo',sans-serif;
+  box-shadow:0 8px 24px rgba(0,0,0,.7);
+}
+.trunc{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:bottom;}
+
+/* TABLES */
+.stbl{width:100%;border-collapse:collapse;font-size:.71rem;}
+.stbl th{text-align:right;padding:6px 8px;color:var(--orange);border-bottom:1px solid rgba(196,97,42,.25);font-size:.63rem;font-weight:700;white-space:nowrap;}
+.stbl td{padding:6px 8px;color:var(--sand);border-bottom:1px solid rgba(255,255,255,.05);vertical-align:top;line-height:1.6;}
+.stbl td.wrap-cell{white-space:normal;word-break:break-word;min-width:100px;max-width:220px;}
+.stbl td.nowrap-cell{white-space:nowrap;}
+.db{display:inline-block;padding:2px 6px;border-radius:5px;font-size:.6rem;}
+.de{background:rgba(122,155,110,.28);color:#9fcf8e;}
+.dm{background:rgba(232,135,58,.28);color:var(--orange);}
+.dh{background:rgba(139,58,26,.38);color:#ff8a5a;}
+
+.wtbl{width:100%;border-collapse:collapse;font-size:.7rem;}
+.wtbl th{text-align:right;padding:6px 8px;color:var(--orange);border-bottom:1px solid rgba(196,97,42,.25);font-size:.61rem;font-weight:700;white-space:nowrap;}
+.wtbl td{padding:6px 8px;color:var(--sand);border-bottom:1px solid rgba(255,255,255,.04);vertical-align:top;line-height:1.6;white-space:normal;word-break:break-word;}
+.wbadge{display:inline-block;padding:2px 6px;border-radius:5px;font-size:.55rem;font-weight:700;}
+
+/* ANGELS */
+.angel-card{background:rgba(212,168,67,.06);border:1px solid rgba(212,168,67,.2);border-radius:11px;padding:11px 13px;margin-bottom:8px;}
+.angel-title{font-size:.86rem;font-weight:700;color:var(--gold);margin-bottom:2px;}
+.angel-sec{font-size:.58rem;color:var(--orange);margin-bottom:4px;}
+.angel-info{font-size:.71rem;color:var(--sand);line-height:1.55;}
+.angel-phone{display:inline-flex;align-items:center;gap:4px;margin-top:5px;padding:3px 9px;background:rgba(122,155,110,.15);border:1px solid rgba(122,155,110,.3);border-radius:7px;font-size:.7rem;color:#9fcf8e;font-weight:600;}
+.angel-note{font-size:.63rem;color:rgba(232,213,176,.45);margin-top:4px;font-style:italic;}
+
+/* GEAR */
+.gw{max-width:960px;margin:0 auto;width:100%;}
+.gt{background:rgba(255,255,255,.04);border:1px solid rgba(196,97,42,.26);border-radius:13px;padding:12px 15px;margin-bottom:.8rem;}
+.pns{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;}
+.pnw{display:flex;align-items:center;gap:4px;}
+.pcd{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.pni{background:rgba(255,255,255,.06);border:1px solid rgba(196,97,42,.22);border-radius:7px;padding:4px 7px;color:var(--cream);font-family:'Heebo',sans-serif;font-size:.74rem;width:88px;}
+.pni:focus{outline:none;border-color:var(--tc);}
+.ni{background:rgba(255,255,255,.08);border:1px solid rgba(196,97,42,.38);border-radius:7px;padding:4px 8px;color:var(--cream);font-family:'Heebo',sans-serif;font-size:.8rem;width:50px;text-align:center;}
+.gcat{background:rgba(255,255,255,.03);border:1px solid rgba(196,97,42,.14);border-radius:12px;padding:.85rem;margin-bottom:.65rem;}
+.gcat h3{font-family:'Frank Ruhl Libre',serif;font-size:.88rem;color:var(--orange);margin-bottom:.6rem;}
+.gi{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);}
+.gi:last-of-type{border-bottom:none;}
+.gi.hidden-item{opacity:.2;text-decoration:line-through;}
+.gn{flex:1;font-size:.77rem;color:var(--sand);}
+.gn.done{text-decoration:line-through;opacity:.35;}
+.g-hide-btn{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:5px;padding:2px 6px;font-size:.55rem;color:rgba(232,213,176,.4);cursor:pointer;font-family:'Heebo',sans-serif;transition:all .15s;white-space:nowrap;flex-shrink:0;}
+.g-hide-btn:hover{border-color:rgba(196,97,42,.4);color:var(--orange);}
+.gi.hidden-item .g-hide-btn{color:var(--orange);border-color:var(--tc);}
+/* delete button for custom items */
+.g-del-btn{background:rgba(180,50,50,.1);border:1px solid rgba(180,50,50,.25);border-radius:5px;padding:2px 6px;font-size:.55rem;color:#e08080;cursor:pointer;font-family:'Heebo',sans-serif;transition:all .15s;white-space:nowrap;flex-shrink:0;}
+.g-del-btn:hover{background:rgba(180,50,50,.25);border-color:#e08080;}
+.gtyp{display:flex;gap:2px;}
+.gtb{padding:2px 6px;border-radius:7px;border:1px solid rgba(255,255,255,.09);background:transparent;color:var(--sand);font-size:.6rem;cursor:pointer;font-family:'Heebo',sans-serif;transition:all .15s;white-space:nowrap;}
+.gtb.ga{background:rgba(107,164,196,.2);border-color:var(--sky);color:var(--sky);}
+.gtb.pa{background:rgba(122,155,110,.2);border-color:var(--sage);color:var(--sage);}
+.gas{min-width:84px;}
+.asel{background:rgba(10,6,1,.9);border:1px solid rgba(196,97,42,.28);border-radius:5px;color:var(--cream);font-family:'Heebo',sans-serif;font-size:.63rem;padding:2px 4px;width:100%;}
+.add-item-row{display:flex;gap:5px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.06);}
+.g-add-input{flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(196,97,42,.25);border-radius:8px;padding:5px 8px;color:var(--cream);font-family:'Heebo',sans-serif;font-size:.75rem;}
+.g-add-input:focus{outline:none;border-color:var(--tc);}
+.g-add-btn{background:var(--tc);border:none;border-radius:8px;padding:5px 11px;color:white;font-family:'Heebo',sans-serif;font-size:.72rem;cursor:pointer;}
+.gfooter{background:rgba(196,97,42,.08);border:1px solid rgba(196,97,42,.2);border-radius:13px;padding:14px 17px;margin-top:1rem;display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+.gsi{font-size:.75rem;color:var(--sand);}.gsi strong{color:var(--orange);}
+.gbtn{padding:7px 15px;border-radius:9px;border:1px solid;font-family:'Heebo',sans-serif;font-size:.74rem;cursor:pointer;transition:all .2s;font-weight:600;}
+.gbtn-gold{background:rgba(212,168,67,.15);border-color:var(--gold);color:var(--gold);}
+.gbtn-gold:hover{background:rgba(212,168,67,.3);}
+.gbtn-sky{background:rgba(107,164,196,.15);border-color:var(--sky);color:var(--sky);}
+.gbtn-sky:hover{background:rgba(107,164,196,.3);}
+
+/* ROUTE PLANNER – wizard style */
+.rw{max-width:1000px;margin:0 auto;width:100%;}
+.route-wizard{display:flex;gap:.8rem;height:calc(100vh - 54px - 2.8rem);overflow:hidden;}
+.route-left{width:220px;flex-shrink:0;display:flex;flex-direction:column;gap:.5rem;}
+.route-sec-list{flex:1;overflow-y:auto;background:rgba(255,255,255,.03);border:1px solid rgba(196,97,42,.2);border-radius:12px;}
+.route-sec-list::-webkit-scrollbar{width:3px;}
+.route-sec-list::-webkit-scrollbar-thumb{background:rgba(196,97,42,.25);}
+.rsec-item{display:flex;align-items:center;gap:7px;padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;transition:all .12s;}
+.rsec-item:hover{background:rgba(196,97,42,.1);}
+.rsec-item.sel{background:rgba(196,97,42,.22);border-right:3px solid var(--tc);}
+.rsec-cb{width:14px;height:14px;border-radius:3px;border:1.5px solid rgba(196,97,42,.4);background:transparent;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .12s;}
+.rsec-item.sel .rsec-cb{background:var(--tc);border-color:var(--tc);}
+.rsec-ck{color:white;font-size:.6rem;opacity:0;}
+.rsec-item.sel .rsec-ck{opacity:1;}
+.rsec-num{font-size:.7rem;color:var(--orange);font-weight:700;min-width:20px;}
+.rsec-name{font-size:.66rem;color:var(--cream);}
+.rsec-km{font-size:.58rem;color:rgba(232,213,176,.4);}
+.route-actions{display:flex;flex-direction:column;gap:5px;}
+.ract{padding:7px 10px;border-radius:9px;border:1px solid;font-family:'Heebo',sans-serif;font-size:.72rem;cursor:pointer;transition:all .2s;font-weight:600;text-align:center;}
+.ract-walk{background:rgba(122,155,110,.15);border-color:var(--sage);color:var(--sage);}
+.ract-walk:hover{background:rgba(122,155,110,.3);}
+.ract-rest{background:rgba(212,168,67,.12);border-color:var(--gold);color:var(--gold);}
+.ract-rest:hover{background:rgba(212,168,67,.25);}
+.ract-finish{background:rgba(196,97,42,.18);border-color:var(--tc);color:var(--orange);}
+.ract-finish:hover{background:rgba(196,97,42,.35);}
+.ract-reset{background:rgba(255,50,50,.07);border-color:rgba(255,100,100,.3);color:#e08080;}
+.ract-reset:hover{background:rgba(255,50,50,.18);}
+.ract:disabled{opacity:.3;cursor:default;}
+.sel-count{font-size:.65rem;color:var(--sand);text-align:center;padding:4px;}
+.route-right{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:.6rem;}
+.route-day-card{background:rgba(255,255,255,.04);border:1px solid rgba(196,97,42,.2);border-radius:12px;padding:11px 14px;position:relative;}
+.rdc-hdr{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+.rdc-day{font-family:'Frank Ruhl Libre',serif;font-size:1rem;color:var(--orange);}
+.rdc-type-badge{padding:2px 8px;border-radius:7px;font-size:.6rem;font-weight:600;}
+.rdc-walk{background:rgba(122,155,110,.2);color:var(--sage);}
+.rdc-rest{background:rgba(212,168,67,.15);color:var(--gold);}
+.rdc-km{font-size:.66rem;color:rgba(232,213,176,.5);}
+.rdc-del{position:absolute;top:8px;left:10px;background:transparent;border:none;cursor:pointer;color:rgba(232,213,176,.25);font-size:.7rem;transition:color .15s;}
+.rdc-del:hover{color:#e08080;}
+.rdc-secs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;}
+.rdc-chip{padding:2px 7px;border-radius:6px;font-size:.62rem;background:rgba(196,97,42,.18);border:1px solid rgba(196,97,42,.35);color:var(--cream);}
+.rdc-info{font-size:.64rem;color:rgba(232,213,176,.5);line-height:1.5;}
+.rdc-gap{margin:5px 0;padding:5px 8px;background:rgba(212,168,67,.1);border:1px solid rgba(212,168,67,.3);border-radius:7px;font-size:.63rem;color:var(--gold);}
+.rdc-gap input{width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(212,168,67,.25);border-radius:6px;padding:3px 7px;color:var(--cream);font-family:'Heebo',sans-serif;font-size:.67rem;margin-top:3px;}
+.rdc-note{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(196,97,42,.15);border-radius:7px;padding:4px 8px;color:var(--cream);font-family:'Heebo',sans-serif;font-size:.68rem;resize:none;margin-top:5px;}
+.rdc-note:focus,.rdc-gap input:focus{outline:none;border-color:var(--tc);}
+.route-empty{text-align:center;color:rgba(232,213,176,.3);font-size:.8rem;padding:2rem 1rem;border:1px dashed rgba(196,97,42,.2);border-radius:12px;}
+.route-finish-panel{background:rgba(122,155,110,.08);border:1px solid rgba(122,155,110,.3);border-radius:13px;padding:14px 16px;}
+.rfp-stats{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;}
+.rfp-stat{text-align:center;}
+.rfp-val{font-family:'Frank Ruhl Libre',serif;font-size:1.35rem;color:var(--sage);}
+.rfp-lbl{font-size:.58rem;color:var(--sand);}
+.rfp-btns{display:flex;gap:7px;flex-wrap:wrap;}
+.route-map-embed{width:100%;height:280px;border:1px solid rgba(196,97,42,.2);border-radius:11px;overflow:hidden;margin-top:.6rem;}
+.route-map-embed iframe{width:100%;height:100%;border:none;}
+
+/* PAID CONTACTS */
+.paid-card{background:rgba(212,168,67,.05);border:1px solid rgba(212,168,67,.22);border-radius:10px;padding:10px 12px;margin-bottom:7px;}
+.paid-name{font-size:.83rem;font-weight:700;color:var(--gold);}
+.paid-phone{display:inline-flex;align-items:center;gap:4px;margin-top:4px;padding:3px 9px;background:rgba(212,168,67,.15);border:1px solid rgba(212,168,67,.35);border-radius:7px;font-size:.72rem;color:var(--gold);font-weight:700;}
+.paid-srv{font-size:.68rem;color:var(--sand);margin-top:4px;line-height:1.5;}
+
+/* MODALS */
+.modal{position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(5px);}
+.modal-inner{background:rgba(12,8,2,.98);border:1px solid rgba(196,97,42,.4);border-radius:18px;padding:20px;width:92%;max-width:720px;max-height:85vh;overflow-y:auto;}
+.modal-inner h2{font-family:'Frank Ruhl Libre',serif;font-size:1.1rem;color:var(--orange);margin-bottom:10px;}
+.etbl{width:100%;border-collapse:collapse;font-size:.72rem;}
+.etbl th{text-align:right;padding:7px 9px;color:var(--orange);border-bottom:1px solid rgba(196,97,42,.25);font-size:.63rem;font-weight:700;}
+.etbl td{padding:6px 9px;color:var(--sand);border-bottom:1px solid rgba(255,255,255,.05);}
+.etbl .grp-row td{background:rgba(196,97,42,.12);color:var(--cream);font-weight:700;font-size:.76rem;}
+.modal-btns{display:flex;gap:7px;margin-top:13px;flex-wrap:wrap;}
+.mbtn{padding:6px 14px;border-radius:8px;border:none;font-family:'Heebo',sans-serif;font-size:.73rem;cursor:pointer;font-weight:600;}
+.mbtn-close{background:rgba(255,255,255,.08);color:var(--sand);}
+.mbtn-xl{background:var(--sage);color:white;}
+.mbtn-close:hover{background:rgba(255,255,255,.14);}
+
+/* ALERTS */
+.ia{padding:8px 10px;border-radius:9px;font-size:.68rem;line-height:1.55;margin-bottom:7px;}
+.pi{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:.76rem;}
+.pi:last-child{border-bottom:none;}
+.pi strong{color:var(--cream);display:block;}.pi span{color:var(--sand);font-size:.68rem;}
+.pii{font-size:.88rem;flex-shrink:0;margin-top:1px;}
+
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(196,97,42,.3);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="logo">
+    <div class="tm"><span class="w"></span><span class="b"></span><span class="o"></span></div>
+    <div><div class="lt">שביל ישראל – הדרום</div><div class="ls">אילת ← נחל תמר &nbsp;•&nbsp; מקטעים 37–56</div></div>
+  </div>
+  <div class="nav">
+    <button class="nb on"  onclick="sv('map',this)">🗺️ מפה</button>
+    <button class="nb"     onclick="sv('info',this)">📋 מידע</button>
+    <button class="nb"     onclick="sv('water',this)">💧 מים</button>
+    <button class="nb"     onclick="sv('angels',this)">😇 מלאכים</button>
+    <button class="nb"     onclick="sv('gear',this)">🎒 ציוד</button>
+    <button class="nb"     onclick="sv('route',this)">🧭 מסלול</button>
+  </div>
+</header>
+
+<div class="wrap">
+
+<!-- ══ MAP ══ -->
+<div class="view on" id="vmap">
+  <iframe id="spni-map" src="https://experience.arcgis.com/experience/cb82523a09db431f9ed47f5645581be5/" title="שביל ישראל" allowfullscreen></iframe>
+
+  <!-- POI icon bar only -->
+  <div class="map-icon-bar">
+    <button class="mib-btn" id="mib-water" onclick="mibPOI('water',this)"><span class="mi">💧</span><span class="ml">מים</span></button>
+    <button class="mib-btn" id="mib-food"  onclick="mibPOI('food',this)"><span class="mi">🛒</span><span class="ml">מזון</span></button>
+    <button class="mib-btn" id="mib-angel" onclick="mibPOI('angel',this)"><span class="mi">😇</span><span class="ml">מלאכים</span></button>
+    <button class="mib-btn" id="mib-camp"  onclick="mibPOI('camp',this)"><span class="mi">🏕️</span><span class="ml">לינה</span></button>
+  </div>
+
+  <!-- Always-visible section panel -->
+  <div class="map-sec-panel" id="map-sec-panel">
+    <div class="msp-head">
+      <span>🥾 מקטעים</span>
+      <div class="dir-toggle">
+        <button class="dtb on" id="dir-sn" onclick="setDir('sn')">ד→צ</button>
+        <button class="dtb" id="dir-ns" onclick="setDir('ns')">צ→ד</button>
+      </div>
+    </div>
+    <div class="msp-list" id="msp-list"></div>
+    <div class="msp-tooltip" id="msp-tooltip" style="display:none;"></div>
+  </div>
+
+  <!-- POI overlay panel -->
+  <div class="poi-panel" id="poi-panel"></div>
+</div>
+
+<!-- ══ INFO ══ -->
+<div class="view scroll-view" id="vinfo">
+  <div class="iw">
+    <h1 class="ivt">מידע שטח</h1>
+    <p class="ivs">מדרום לצפון | מקטעים 56 ← 37 | לפי SPNI</p>
+    <div class="ic">
+      <h3>🥾 כל המקטעים – דרום לצפון</h3>
+      <div style="overflow-x:auto;"><table class="stbl" id="sec-tbl"></table></div>
+    </div>
+    <div class="two">
+      <div class="ic">
+        <h3>🛒 קניה ואספקה</h3>
+        <div class="pi"><span class="pii">🏪</span><div><strong>אילת</strong><span>נקודת פתיחה – קנו הכל לימים הראשונים!</span></div></div>
+        <div class="pi"><span class="pii">🏪</span><div><strong>באר אורה – מינימרקט</strong><span>מק' 53/54 – סטייה, יש גם מים</span></div></div>
+        <div class="pi"><span class="pii">🏪</span><div><strong>פארק תמנע</strong><span>מק' 52 – חנות קטנה, כניסה חינם לשביליסטים</span></div></div>
+        <div class="pi"><span class="pii">🏪</span><div><strong>שחרות – שופרסל אונליין</strong><span>מק' 50–51 – הזמינו מראש 5 ימים!</span></div></div>
+        <div class="pi"><span class="pii">🏘️</span><div><strong>נאות סמדר</strong><span>מק' 49 – מסעדה צמחונית, לינה בהתנדבות</span></div></div>
+        <div class="pi"><span class="pii">🏪</span><div><strong>ספיר – מינימרקט</strong><span>מק' 45/46 – סטייה קטנה, שער אחורי לרגלים</span></div></div>
+        <div class="pi"><span class="pii">🏬</span><div><strong>מצפה רמון – רמי לוי + חנויות</strong><span>מק' 42/43 – עיר מלאה, קנו לכמה ימים</span></div></div>
+        <div class="ia" style="background:rgba(196,97,42,.08);color:var(--orange);">⚠️ מקטעים 46–53 – כמעט אין אספקה! תכננו מראש ושקלו הזמנת אספקה לשחרות.</div>
+      </div>
+      <div class="ic">
+        <h3>🏕️ חניוני לילה ראשיים</h3>
+        <div class="pi"><span class="pii">⛺</span><div><strong>בית ספר שדה אילת</strong><span>מק' 56 – מים, שירותים, 60₪/לילה</span></div></div>
+        <div class="pi"><span class="pii">⛺</span><div><strong>חניון הר יהורם</strong><span>מק' 55–56 – עוקב מים הרט"ג</span></div></div>
+        <div class="pi"><span class="pii">⛺</span><div><strong>קיבוץ אליפז</strong><span>מק' 53–54 – לינה, מקלחות, ללא תיאום!</span></div></div>
+        <div class="pi"><span class="pii">⛺</span><div><strong>חניון רחם עתק</strong><span>מק' 53 – עוקב מים הרט"ג</span></div></div>
+        <div class="pi"><span class="pii">⛺</span><div><strong>פארק תמנע</strong><span>מק' 52 – מחיר מוזל לשביליסטים</span></div></div>
+        <div class="pi"><span class="pii">⛺</span><div><strong>חאן שחרות</strong><span>מק' 50–51 – מים + לינה</span></div></div>
+        <div class="pi"><span class="pii">⛺</span><div><strong>חניון חולות כסוי</strong><span>מק' 49–50 – חניון לילה, אין מים</span></div></div>
+        <div class="pi"><span class="pii">⛺</span><div><strong>חניון שיזפון</strong><span>מק' 49 – חניון בלתי מוכרז, אין מים</span></div></div>
+        <div class="pi"><span class="pii">⛺</span><div><strong>שיטים – אשראם במדבר</strong><span>מק' 48–49 – לינה ואוכל בתשלום</span></div></div>
+        <div class="pi"><span class="pii">⛺</span><div><strong>חניון ציחור (מפגש פארן)</strong><span>מק' 47–48 – חניון לילה, עוקב הרט"ג</span></div></div>
+        <div class="pi"><span class="pii">⛺</span><div><strong>חניון נחל ברק</strong><span>מק' 46–47 – עוקב מים הרט"ג!</span></div></div>
+        <div class="pi"><span class="pii">⛺</span><div><strong>חניון גב חולית</strong><span>מק' 44–45 – הטמנה בתשלום, ק"ש ברכב שטח</span></div></div>
+        <div class="pi"><span class="pii">⛺</span><div><strong>חניון בארות</strong><span>מק' 43–44 – סטייה 3 ק"מ</span></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ WATER ══ -->
+<div class="view scroll-view" id="vwater">
+  <div class="iw">
+    <h1 class="ivt">💧 מים בשביל</h1>
+    <p class="ivs">מדרום לצפון | מקור: ויקישביל (25.11.25)</p>
+    <div class="ia" style="background:rgba(91,163,201,.1);color:#8cc9e0;margin-bottom:1rem;">
+      ⚠️ <strong>5–7 ליטר לשתיה לאדם ליום בדרום.</strong> מיכלי הרט"ג זמינים כמעט תמיד (הר יהורם ← מצפה המכתש הקטן). תמיד תהיה <strong>PLAN B</strong>!
+      מקטעים 46–49: <strong style="color:#ff8a8a;">ללא מים קבועים!</strong> הטמינו מראש או ודאו שיש עוקב הרט"ג.
+    </div>
+    <div class="ic">
+      <h3>🗺️ נקודות מים – מדרום לצפון</h3>
+      <div style="overflow-x:auto;"><table class="wtbl" id="water-tbl"></table></div>
+    </div>
+    <div class="ic" style="margin-top:1rem;">
+      <h3>📞 מטמיני מים בתשלום – הדרום</h3>
+      <div class="ia" style="background:rgba(196,97,42,.08);color:var(--orange);">
+        לפני היציאה לשביל – תאמו הטמנות מראש! כל המספרים לפי ויקישביל / שירותים בתשלום.
+      </div>
+      <div id="paid-contacts"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ANGELS ══ -->
+<div class="view scroll-view" id="vangels">
+  <div class="iw" style="max-width:900px;">
+    <h1 class="ivt">😇 מלאכי שביל</h1>
+    <p class="ivs">מדרום לצפון | עדכון: ויקישביל + SPNI | בדקו לפני כל יציאה!</p>
+    <div class="ic">
+      <div class="ia" style="background:rgba(212,168,67,.1);color:var(--gold);">
+        📋 <strong>כללי ברזל:</strong> להתקשר לפחות 24 שעות מראש (לא אחרי 20:00) • לילה אחד בלבד •
+        תרומה ~20₪ • שביליסטים ברצף בלבד
+      </div>
+    </div>
+    <div id="angels-list"></div>
+    <div class="ic" style="margin-top:.8rem;">
+      <h3>🔗 הרשימה המלאה</h3>
+      <div class="ia" style="background:rgba(107,164,196,.08);color:var(--sky);">
+        הרשימה הרשמית והמעודכנת ע"י המלאכים עצמם:
+        <a href="https://shvil.fandom.com/wiki/%D7%9E%D7%9C%D7%90%D7%9B%D7%99_%D7%A9%D7%91%D7%99%D7%9C_%D7%99%D7%A9%D7%A8%D7%90%D7%9C" target="_blank" style="color:var(--sky);">ויקישביל – מלאכי שביל ישראל →</a>
+        &nbsp;|&nbsp;
+        <a href="https://www.teva.org.il/israel-national-trail/angels-10" target="_blank" style="color:var(--sky);">SPNI – מלאכי הדרום →</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ GEAR ══ -->
+<div class="view scroll-view" id="vgear">
+  <div class="gw">
+    <h1 class="ivt">🎒 רשימת ציוד</h1>
+    <p class="ivs">❌ הסתר פריט | קבוצתי/אישי | מי מביא | ייצוא אישי</p>
+    <div class="gt">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:7px;">
+        <label style="font-size:.8rem;color:var(--sand);">מספר משתתפים:</label>
+        <input type="number" class="ni" id="np" value="4" min="1" max="12" oninput="rebuildP()">
+      </div>
+      <div class="pns" id="pnames"></div>
+    </div>
+    <div id="glist"></div>
+    <!-- export footer BELOW all gear -->
+    <div class="gfooter">
+      <div class="gsi">סה"כ: <strong id="st">0</strong></div>
+      <div class="gsi">הוסתרו: <strong id="sh">0</strong></div>
+      <div class="gsi">קבוצה: <strong id="sg">0</strong></div>
+      <div class="gsi">אישי: <strong id="sp">0</strong></div>
+      <button class="gbtn gbtn-gold" onclick="openExport()">📊 טבלה מסכמת</button>
+      <button class="gbtn gbtn-sky"  onclick="exportExcelAll()">📥 ייצא לאקסל (כולם)</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ROUTE ══ -->
+<div class="view scroll-view" id="vroute" style="padding:.8rem;overflow:hidden;">
+  <div style="max-width:1200px;margin:0 auto;width:100%;height:100%;display:flex;flex-direction:column;">
+    <div style="text-align:center;margin-bottom:.5rem;flex-shrink:0;">
+      <h1 class="ivt" style="font-size:1.3rem;margin-bottom:.1rem;">🧭 הכנת מסלול</h1>
+      <p class="ivs" style="margin-bottom:.3rem;font-size:.72rem;">סמנו מקטעים ← לחצו "העבר ליום הליכה / יום מנוחה" ← סיום</p>
+    </div>
+    <div class="route-wizard">
+      <!-- LEFT: section list + action buttons -->
+      <div class="route-left">
+        <div class="sel-count" id="sel-count">0 מקטעים נבחרו</div>
+        <div class="route-sec-list" id="route-sec-list"></div>
+        <div class="route-actions">
+          <button class="ract ract-walk" id="btn-add-walk" onclick="addDayFromSel('walk')" disabled>+ העבר ליום הליכה</button>
+          <button class="ract ract-rest" onclick="addDayFromSel('rest')">+ הוסף יום מנוחה</button>
+          <div style="height:1px;background:rgba(255,255,255,.07);margin:2px 0;"></div>
+          <button class="ract ract-finish" id="btn-finish" onclick="finishRoute()" disabled>סיום ← צפה בטבלה</button>
+          <button class="ract ract-reset" onclick="resetRoute()">אפס מסלול</button>
+        </div>
+      </div>
+      <!-- RIGHT: day cards + finish panel -->
+      <div class="route-right" id="route-right">
+        <div class="route-empty" id="route-empty">
+          בחרו מקטעים מהרשימה ולחצו "העבר ליום הליכה"<br>
+          <span style="font-size:.65rem;opacity:.5;">ניתן להוסיף כמה מקטעים שרוצים לכל יום</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /wrap -->
+
+<!-- GEAR EXPORT MODAL -->
+<div class="modal" id="export-modal" style="display:none">
+  <div class="modal-inner">
+    <h2>📊 טבלה מסכמת – ציוד לשביל</h2>
+    <div id="export-content"></div>
+    <div class="modal-btns">
+      <button class="mbtn mbtn-close" onclick="closeExport()">✕ סגור</button>
+      <button class="mbtn mbtn-xl" onclick="exportExcelAll()">📥 ייצא הכל לאקסל</button>
+      <div id="per-person-btns" style="display:flex;gap:5px;flex-wrap:wrap;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ROUTE MODAL -->
+<div class="modal" id="route-modal" style="display:none">
+  <div class="modal-inner">
+    <h2>🧭 טבלת מסלול</h2>
+    <div id="route-modal-content"></div>
+    <div class="modal-btns">
+      <button class="mbtn mbtn-close" onclick="document.getElementById('route-modal').style.display='none'">✕ סגור</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════
+const SEC_RAW=[
+  {num:37,from:'נחל תמר',to:'נחל עקרבים',km:20,diff:'easy',
+   water:['חניון מצפה המכתש הקטן – הרט"ג (שתיה בלבד)'],
+   food:['אין – הכינו מראש'],angels:[],
+   camps:['חניון מצפה המכתש הקטן'],
+   note:'כניסה לנגב. גבי פרס – טיהור בחורף בלבד. אין מים בדרך!'},
+  {num:38,from:'נחל עקרבים',to:'אורון',km:19,diff:'easy',
+   water:['מפעל אורון (סטייה קלה)','עין ירקעם – טיהור חורף בלבד'],
+   food:['מפעל אורון – בסיסי'],angels:[],
+   camps:['חניון ירקעם'],
+   note:'מעלה עקרבים. ⚠️ אין מים בטוחים – הגיעו מוכנים.'},
+  {num:39,from:'אורון',to:'נחל עפרן',km:16,diff:'easy',
+   water:['חניון עפרן-מדור – הטמנה בתשלום'],
+   food:['אין'],angels:[],
+   camps:['חניון עפרן-מדור'],
+   note:'נגב שטוח. אין מים קבועים – הטמינו מראש!'},
+  {num:40,from:'נחל עפרן',to:'חוד עקב',km:19,diff:'medium',
+   water:['חניון חוד עקב – הרט"ג (שתיה בלבד)'],
+   food:['אין'],angels:[],
+   camps:['חניון חוד עקב'],
+   note:'נוף שטוח. הרט"ג אמין. הגיעו עם מים לאורך כל הדרך.'},
+  {num:41,from:'חוד עקב',to:'נחל חווה',km:18,diff:'medium',
+   water:['חניון חווה – הטמנה בתשלום','גבי חווה – טיהור חורף בלבד'],
+   food:['אין'],angels:[],
+   camps:['חניון חווה'],
+   note:'עין חווה – סטייה 800 מ\', זרימה איטית. הטמינו מראש!'},
+  {num:42,from:'נחל חווה',to:'מצפה רמון',km:18,diff:'medium',
+   water:['מצפה רמון – עיר, מים בשפע','ברז כביש 40 (סטייה 2 ק"מ)'],
+   food:['שדה בוקר – סטייה 5.5 ק"מ','מצפה רמון – רמי לוי + מסעדות'],
+   angels:['עפר רובינשטיין 054-4314040','שמשון 054-3451203'],
+   camps:['חניון בארות (סטייה 3 ק"מ)','בי"ס שדה הר הנגב (מצפה רמון)'],
+   note:'נוף מכתש. שדה בוקר / מדרשת בן גוריון בסטייה 5.5 ק"מ.'},
+  {num:43,from:'מצפה רמון',to:'נחל גוונים',km:22,diff:'medium',
+   water:['מצפה רמון – מים בשפע (לפני)','חניון גוונים – ברז ליד כביש 40','הטמנה בחניון גוונים (לא חובה)'],
+   food:['מצפה רמון – רמי לוי + מסעדות'],
+   angels:['עפר רובינשטיין 054-4314040','עזרי ותרזה 052-4840324','ליאור נחמה 052-7204600','בי"ס שדה הר הנגב 052-8746406'],
+   camps:['בי"ס שדה הר הנגב','חניון גוונים (סהרונים)'],
+   note:'חציית מכתש רמון. ביס"ש הר הנגב – לינה מומלצת.'},
+  {num:44,from:'נחל גוונים',to:'גב חולית',km:22,diff:'medium',
+   water:['חניון בארות – סטייה 3 ק"מ לכל כיוון','חניון גב חולית – הטמנה בתשלום (לא מים קבועים!)'],
+   food:['אין'],angels:[],
+   camps:['חניון גב חולית','חניון בארות (סטייה 3 ק"מ)'],
+   note:'⚠️ ק"ש לחניון גב חולית ברכב שטח בלבד. אין מים בחניון – הטמינו מראש!'},
+  {num:45,from:'גב חולית',to:'ספיר',km:20,diff:'medium',
+   water:['ספיר – ברז מים (סטייה <1 ק"מ, שער אחורי פתוח)'],
+   food:['ספיר – מינימרקט (סטייה קטנה)'],
+   angels:['מארחים בספיר – ברשימת ויקישביל'],
+   camps:['חניון ספיר'],
+   note:'ירידה לערבה. ספיר: ברז + מינימרקט + שופרסל אונליין.'},
+  {num:46,from:'ספיר',to:'צוקים',km:15,diff:'medium',
+   water:['ספיר – טענו לפני היציאה!','צוקים – מים ביישוב (סטייה)'],
+   food:['צוקים – חנות קטנה (סטייה לכביש הערבה)'],angels:[],
+   camps:['לינת שטח – אין חניון מוכרז ביניהם'],
+   note:'15 ק"מ על שביל + 4 ק"מ עד צוקים. אין מים בשביל – הכינו 6 ליטר! המלצת לינה: בי"ס שדה חצבה (סטייה).'},
+  {num:47,from:'צוקים',to:'נחל ברק',km:29,diff:'hard',
+   water:['חניון נחל ברק – הרט"ג (שתיה בלבד!)','אין מים בכל המקטע – הכינו מראש!'],
+   food:['אין'],angels:[],
+   camps:['חניון לילה נחל ברק (1.5 ק"מ מכביש 90)','חניון יום – יציאת קניון ורדית (ק"ש)','מפגש פארן+ציחור – חניון לילה (ק"ש)'],
+   note:'29 ק"מ! מקטע הארוך ביותר. קניון ברק + קניון ורדית – סולמות+חבלים. בחורף ייתכן שחייה בגבים. מעקפים קיימים.'},
+  {num:48,from:'נחל ברק',to:'נחל ציחור',km:29,diff:'hard',
+   water:['חניון ציחור – הרט"ג (שתיה בלבד!)','חניון נחל פארן+ציחור – לא תמיד יש מים','אין מים בדרך!'],
+   food:['אין'],angels:[],
+   camps:['חניון מפגש פארן+ציחור (ק"ש)','חניון צומת ציחור (ליד כביש 40)'],
+   note:'29 ק"מ! קניון ברק + קניון ורדית – סולמות, חבלים, ייתכן שחייה בגבים. מעקפים קיימים. מקטע ארוך ותובעני מאוד.'},
+  {num:49,from:'נחל ציחור',to:'צומת שיזפון',km:14,diff:'medium',
+   water:['חניון ציחור – הרט"ג (שתיה בלבד!) – לפני היציאה','שיטים – ברז מים (סטייה <1 ק"מ)','אין מים אחרים בדרך!'],
+   food:['שיטים – ארוחה צמחונית (סטייה <1 ק"מ)','נאות סמדר – מסעדה (סטייה קלה ממזרח לכביש 40)'],
+   angels:['שיטים – אשראם במדבר 08-6326508','נאות סמדר 054-9798919'],
+   camps:['חניון שיזפון (בלתי מוכרז, ליד בסיס)','חניון חולות כסוי (דיונות נחל כסוי)'],
+   note:'מישורי לרוב. שיטים: לינה, ארוחה, ברז מים – פחות מ-1 ק"מ מהשביל. נאות סמדר: לינה בהתנדבות, מסעדה.'},
+  {num:50,from:'צומת שיזפון',to:'שחרות',km:21,diff:'medium',
+   water:['חאן שחרות – מים (ראש/סוף מקטע)','ברז מקורות 2.5 ק"מ מדרום לחולות כסוי (150 מ\' מהשביל)'],
+   food:['שחרות – שופרסל אונליין (5 ימים מראש!)','חאן שחרות – מזון בסיסי'],
+   angels:['עמיר/גליה שחרות: camel1985@gmail.com (5 ימים מראש!)'],
+   camps:['חאן שחרות (חניון הנוודים)','חניון חולות כסוי (דיונות)'],
+   note:'מישורי לאורך רוב הדרך. בקעת עובדה ומקדש הנמרים – נקודות עניין. שחרות: אספקה ומים!'},
+  {num:51,from:'שחרות',to:'באר מילחן',km:17,diff:'medium',
+   water:['חאן שחרות – מים (נקודת התחלה)','חניון באר מילחן – הרט"ג (שתיה בלבד)'],
+   food:['שחרות – שופרסל אונליין (לפני)'],
+   angels:['עמיר/גליה שחרות: camel1985@gmail.com'],
+   camps:['חניון שחרות (חאן הנוודים)','חניון באר מילחן'],
+   note:'ק"ש לחניון באר מילחן ברכב שטח. באר מילחן – מים מליחים לא לשתיה! הרט"ג – לשתיה.'},
+  {num:52,from:'באר מילחן',to:'תמנע',km:12,diff:'medium',
+   water:['פארק תמנע – מים ליד האגם'],
+   food:['פארק תמנע – חנות'],
+   angels:['פארק תמנע 053-2716190'],
+   camps:['פארק תמנע – מחיר מוזל לשביליסטים'],
+   note:'כניסה לפארק תמנע – חינם לשביליסטים! מים ליד מרכז המבקרים. 12 ק"מ בלבד – יום קצר.'},
+  {num:53,from:'תמנע',to:'באר אורה',km:13,diff:'medium',
+   water:['חניון רחם עתק – הרט"ג (שתיה בלבד)','באר אורה – מינימרקט (סטייה, שביל שחור+כחול)'],
+   food:['באר אורה – מינימרקט'],
+   angels:['קיבוץ אליפז 08-6356230 (ללא תיאום!)'],
+   camps:['קיבוץ אליפז – לינה קמפינג','חניון הר יהורם'],
+   note:'שער באר אורה נעול – התקשרו 08-6370247. קיבוץ אליפז: לינה+מקלחת+קיוסק, ללא תיאום מראש!'},
+  {num:54,from:'באר אורה',to:'קניון שחורת',km:20,diff:'hard',
+   water:['חניון הר יהורם – הרט"ג (שתיה בלבד)','אין מים בדרך!'],
+   food:['אין'],
+   angels:['קיבוץ אליפז 08-6356230'],
+   camps:['חניון הר יהורם'],
+   note:'כניסה להרי אילת. נוף אדיר. ⚠️ ללא מים בדרך – טענו לפני היציאה!'},
+  {num:55,from:'קניון שחורת',to:'הר יהורם',km:13,diff:'hard',
+   water:['חניון הר יהורם – הרט"ג (שתיה בלבד)'],
+   food:['אין'],angels:[],
+   camps:['חניון הר יהורם'],
+   note:'קניונים מרהיבים. לוודא עם פקח טרם יציאה. הרי אילת: נוף גיאולוגי ייחודי.'},
+  {num:56,from:'אילת',to:'הר יהורם',km:18,diff:'hard',
+   water:['אילת – בתחילה','בי"ס שדה אילת – מים ושירותים'],
+   food:['אילת – עיר מלאה'],
+   angels:['בי"ס שדה אילת 08-6372021','נדב 052-5013920'],
+   camps:['בי"ס שדה אילת – 60₪/לילה'],
+   note:'מדרום לצפון: אילת→הר יהורם. ירידה תלולה 800 מ\' הפרש גובה (מצפון לדרום). אפשרות קיצור: מונית מהר יואש לאילת.'},
+];
+
+// Display order: S→N = 56 first
+let dirSN=true;
+let SEC=()=>dirSN?[...SEC_RAW].reverse():SEC_RAW;
+
+// WATER
+const WATER=[
+  {name:'בית ספר שדה אילת',sec:'מק\' 56',type:'city',dev:'על השביל',info:'מים בשפע, פתוח 24/7. נקודת פתיחה/סיום. 60₪/לילה.',cache:false,detour:false},
+  {name:'חניון הר יהורם – הרט"ג',sec:'מק\' 54–56',type:'rtg',dev:'על השביל',info:'עוקב מים הרט"ג – לשתיה בלבד. אמין.',cache:false,detour:false},
+  {name:'חניון רחם עתק – הרט"ג',sec:'מק\' 53',type:'rtg',dev:'על השביל',info:'עוקב מים הרט"ג – לשתיה בלבד.',cache:false,detour:false},
+  {name:'קיבוץ אליפז',sec:'מק\' 53',type:'fixed',dev:'על השביל',info:'מים + קמפינג. ללא תיאום מראש. 08-6356230.',cache:false,detour:false},
+  {name:'באר אורה – מינימרקט',sec:'מק\' 53',type:'city',dev:'שביל שחור+כחול (סטייה)',info:'שער נעול – התקשרו 08-6370247 לפני! מים + מינימרקט.',cache:false,detour:true},
+  {name:'פארק תמנע – ליד האגם',sec:'מק\' 52',type:'city',dev:'על השביל',info:'מים ליד האגם (לא בחניון שבוטל). כניסה חינם לשביליסטים!',cache:false,detour:false},
+  {name:'חניון באר מילחן – הרט"ג',sec:'מק\' 51',type:'rtg',dev:'על השביל (ק"ש)',info:'הרט"ג – לשתיה בלבד! ק"ש. באר מילחן עצמה – מליח, לא לשתיה.',cache:false,detour:false},
+  {name:'חאן שחרות',sec:'מק\' 50–51',type:'fixed',dev:'על השביל',info:'מים ולינה. שופרסל אונליין לשחרות (5 ימים מראש).',cache:false,detour:false},
+  {name:'ברז מקורות – צומת שחרות',sec:'מק\' 49–50',type:'fixed',dev:'150 מ\' מהשביל',info:'ברז מים מחוץ לגדר מתקן מקורות. 2.5 ק"מ מדרום לחולות כסוי.',cache:false,detour:true},
+  {name:'שיטים – ברז מים',sec:'מק\' 48–49',type:'fixed',dev:'סטייה <1 ק"מ',info:'ברז מים באשרם. יש גם ארוחה צמחונית ולינה בתשלום.',cache:false,detour:true},
+  {name:'חניון ציחור – הרט"ג',sec:'מק\' 48–49',type:'rtg',dev:'על השביל',info:'עוקב הרט"ג – לשתיה בלבד! (ליד כביש 40 ונחל ציחור)',cache:false,detour:false},
+  {name:'חניון נחל ברק – הרט"ג',sec:'מק\' 46–47',type:'rtg',dev:'על השביל (1.5 ק"מ מכביש 90)',info:'עוקב הרט"ג – לשתיה בלבד! החניון נגיש לכל רכב.',cache:false,detour:false},
+  {name:'ספיר – ברז וחניון',sec:'מק\' 45–46',type:'fixed',dev:'סטייה <1 ק"מ (שער אחורי)',info:'ברז מים + חניון שביליסטים. 800 מ\' מדרום ליישוב.',cache:false,detour:true},
+  {name:'צוקים – יישוב',sec:'מק\' 46',type:'city',dev:'סטייה לכביש הערבה',info:'מים ביישוב. חנות קטנה. תיאום מראש עם תושבים.',cache:false,detour:true},
+  {name:'חניון גב חולית – הטמנה',sec:'מק\' 44–45',type:'cache',dev:'על השביל (ק"ש)',info:'הטמנה בתשלום בלבד. אין מים קבועים בחניון!',cache:true,detour:false},
+  {name:'חניון בארות',sec:'מק\' 43–44',type:'fixed',dev:'סטייה 3 ק"מ לכל כיוון',info:'דרך עפר טובה.',cache:false,detour:true},
+  {name:'חניון גוונים – ברז',sec:'מק\' 43',type:'fixed',dev:'ליד כביש 40',info:'ברז מים + הטמנה (לא חובה). ליד פנית כביש 40.',cache:false,detour:false},
+  {name:'מצפה רמון – עיר',sec:'מק\' 42–43',type:'city',dev:'על השביל',info:'סופר, בתי קפה, מסעדות, ברז. קנו לכמה ימים!',cache:false,detour:false},
+  {name:'ברז כביש 40 (נחל נקרות)',sec:'מק\' 42',type:'fixed',dev:'סטייה 2 ק"מ',info:'הליכה מישורית לצד הכביש.',cache:false,detour:true},
+  {name:'שדה בוקר / מדרשת בן גוריון',sec:'מק\' 42',type:'city',dev:'סטייה 5.5 ק"מ',info:'מכולת (מחירים גבוהים), מלאך שביל בפנימייה.',cache:false,detour:true},
+  {name:'חניון חווה – הטמנה',sec:'מק\' 41',type:'cache',dev:'על השביל',info:'הטמנה בתשלום. גבי חווה – טיהור בחורף בלבד.',cache:true,detour:false},
+  {name:'חניון חוד עקב – הרט"ג',sec:'מק\' 40',type:'rtg',dev:'על השביל',info:'עוקב הרט"ג – לשתיה בלבד!',cache:false,detour:false},
+  {name:'חניון עפרן-מדור – הטמנה',sec:'מק\' 39',type:'cache',dev:'על השביל',info:'הטמנה בתשלום. אין מקור מים אחר!',cache:true,detour:false},
+  {name:'מפעל אורון',sec:'מק\' 38',type:'fixed',dev:'סטייה קלה',info:'מים זמינים.',cache:false,detour:true},
+  {name:'חניון מצפה המכתש הקטן',sec:'מק\' 37',type:'rtg',dev:'על השביל',info:'עוקב הרט"ג – לשתיה בלבד!',cache:false,detour:false},
+  {name:'גבי פרס',sec:'מק\' 37',type:'natural',dev:'סטייה קלה',info:'טיהור בלבד אם הגבים מלאים (חורף/אביב).',cache:false,detour:true},
+];
+
+const PAID=[
+  {name:'חיים ברגר',phone:'054-5343797',email:'h.berger@spni.org.il',srv:'הטמנות קבועות מערד עד אילת: נחל חווה, גב חולית, נחל מדור ועוד. הקפצות בג\'יפ. ייעוץ + תכנון מסלול. שולח רשימת הטמנות במייל.'},
+  {name:'עמיר/גליה – חניון הנוודים שחרות',phone:'',email:'camel1985@gmail.com',srv:'לינה + הטמנת מים ואוכל. קניית מצרכים באילת שממתינים בשחרות. הטמנות 4 תחנות בהרי אילת. הזמנה 5 ימים מראש.'},
+  {name:'קיבוץ אליפז',phone:'08-6356230',email:'',srv:'הקפצות + הטמנות מים בתשלום. לינה קמפינג ללא תיאום מראש. מקלחות, שירותים, קיוסק.'},
+  {name:'פארק תמנע',phone:'053-2716190',email:'',srv:'לינה במתחם האגם במחיר מוזל לשביליסטים. הזמנה מראש באתר parktimna.co.il'},
+  {name:'אשראם במדבר – שיטים',phone:'08-6326508 | 052-3824617',email:'',srv:'לינה (25₪ קמפינג, 75₪ חדר) + ארוחות. ברז מים. בתיאום מראש.'},
+  {name:'זיו ספקטור – חוות צל מדבר (מצפה רמון)',phone:'054-6277413',email:'',srv:'הנחות לינה, הנחיה, לוגיסטיקה למחזיקי דרכון ש"י.'},
+  {name:'אביטל ואילן – שדה בוקר',phone:'052-5428510 | 08-6532326',email:'',srv:'הובלת ציוד + הטמנת מים. הזמנה שבוע מראש.'},
+  {name:'עמיר גד נאור',phone:'054-4956030',email:'',srv:'הטמנות + הקפצות באזור שחרות–אילת.'},
+];
+
+const ANGELS=[
+  {loc:'אילת – בית ספר שדה',sec:'מק\' 56 | נקודת פתיחה/סיום',phone:'08-6372021',srv:'לינה קמפינג 60₪/לילה, שירותים, מקלחת, חשמל. נקודת חתמת דרכון ש"י. ניתן להזמין ארוחת בוקר ארוזה.',note:'בתיאום מראש. לא בחגים. מגודר ומאובטח.'},
+  {loc:'אילת – נדב',sec:'מק\' 56',phone:'052-5013920',srv:'לינה עד 3 מטיילים. מקלחת, כביסה, גז, WIFI. לא שומר שבת.',note:'2 סטודנטים, שביליסטים לשעבר. אווירה מעולה!'},
+  {loc:'קיבוץ אליפז',sec:'מק\' 53–54',phone:'08-6356230',srv:'לינה קמפינג על מזרונים, מקלחות, שירותים, קפה/תה חופשי, קיוסק. הקפצות + הטמנות מים בתשלום.',note:'ללא תיאום מראש – פתוח תמיד!'},
+  {loc:'פארק תמנע',sec:'מק\' 52',phone:'053-2716190',srv:'לינה במתחם האגם במחיר מוזל. הזמנה: parktimna.co.il',note:'בתיאום מראש.'},
+  {loc:'שחרות – עמיר/גליה (חניון הנוודים)',sec:'מק\' 50–51',phone:'camel1985@gmail.com',srv:'לינה, מקלחת, אוכל, הקפצות, הטמנת מים. קניית מזון באילת שממתין לכם.',note:'הזמנה 5 ימים מראש בלבד! מייל בלבד.'},
+  {loc:'נאות סמדר',sec:'מק\' 49 (ממזרח לכביש 40)',phone:'054-9798919',srv:'לינה בהתנדבות. מסעדה צמחונית. ממוצ"ש עד חמישי.',note:'בבקשה לתאם מראש בוואטסאפ.'},
+  {loc:'שיטים – אשראם במדבר',sec:'מק\' 48–49',phone:'08-6326508 | 052-3824617',srv:'לינה קמפינג (25₪) + חדרים (75₪). ארוחות. ברז מים <1 ק"מ. נקודת חתמת דרכון.',note:'בתיאום מראש.'},
+  {loc:'מרחב עם (אזור ערבה)',sec:'מק\' 48 (אזור)',phone:'052-6558582 (אונית)',srv:'1-3 מטיילים ברצף. מקלחת, אינטרנט, מטבח כשר. ארוחות שבת.',note:'בתיאום יומיים מראש.'},
+  {loc:'מצפה רמון – עפר רובינשטיין',sec:'מק\' 42–43',phone:'054-4314040',srv:'לינה, מקלחת, מטבח, אינטרנט. כולל שבתות. עד 2 מטיילים.',note:'בתיאום מראש.'},
+  {loc:'מצפה רמון – שמשון',sec:'מק\' 42–43',phone:'054-3451203',srv:'חדר פרטי עם מיטה זוגית + מזרון. מקלחת, מטבח, אינטרנט, כביסה. גם בשבתות.',note:'וואטסאפ מועדף.'},
+  {loc:'מצפה רמון – עזרי ותרזה בלזם',sec:'מק\' 42–43',phone:'052-4840324',srv:'לינה, מקלחת, ארוחה כשרה. 2-3 מטיילים. שמירת שבת.',note:''},
+  {loc:'מצפה רמון – ליאור נחמה',sec:'מק\' 42–43',phone:'052-7204600',srv:'יחידה ל-2 מטיילים, שירותים + מקלחת צמודים. משפחה כשרה.',note:'וואטסאפ מועדף.'},
+  {loc:'בי"ס שדה הר הנגב (מצפה רמון)',sec:'מק\' 42–43',phone:'052-8746406 | 08-6588615',srv:'קמפינג ללא תשלום. נקודת חתמת דרכון ש"י.',note:''},
+  {loc:'טללים – אודי',sec:'מק\' 42 (סטייה)',phone:'052-2304345',srv:'עד 4 מטיילים. ארוחה, לינה, מקלחת. אפשרות איסוף מאזור שדה בוקר.',note:'בתיאום מראש.'},
+];
+
+const POI_DEF={
+  water:{icon:'💧',color:'#5BA3C9',label:'מקורות מים',alert:'5–7 ליטר ביום. 46–49: ללא מים – הטמינו!',alertBg:'rgba(91,163,201,.1)',alertClr:'#8cc9e0',
+    points:[
+      {name:'בי"ס שדה אילת',sec:'מק\' 56',info:'מים בשפע 24/7',badge:'אמין',bc:'#7A9B6E'},
+      {name:'הר יהורם – הרט"ג',sec:'מק\' 54–56',info:'עוקב מים הרט"ג',badge:'הרט"ג',bc:'#5BA3C9'},
+      {name:'רחם עתק – הרט"ג',sec:'מק\' 53',info:'עוקב הרט"ג',badge:'הרט"ג',bc:'#5BA3C9'},
+      {name:'פארק תמנע',sec:'מק\' 52',info:'מים ליד האגם',badge:'אמין',bc:'#7A9B6E'},
+      {name:'באר מילחן – הרט"ג',sec:'מק\' 51',info:'שתיה בלבד! ק"ש',badge:'הרט"ג',bc:'#5BA3C9'},
+      {name:'חאן שחרות',sec:'מק\' 50–51',info:'מים + לינה',badge:'אמין',bc:'#7A9B6E'},
+      {name:'ברז מקורות שחרות',sec:'מק\' 49–50',info:'150 מ\' מהשביל',badge:'קבוע',bc:'#7A9B6E'},
+      {name:'שיטים – ברז',sec:'מק\' 48–49',info:'<1 ק"מ סטייה',badge:'קבוע',bc:'#7A9B6E'},
+      {name:'חניון ציחור – הרט"ג',sec:'מק\' 47–48',info:'שתיה בלבד!',badge:'הרט"ג',bc:'#5BA3C9'},
+      {name:'חניון ברק – הרט"ג',sec:'מק\' 46–47',info:'שתיה בלבד!',badge:'הרט"ג',bc:'#5BA3C9'},
+      {name:'ספיר – ברז',sec:'מק\' 45–46',info:'<1 ק"מ סטייה',badge:'אמין',bc:'#7A9B6E'},
+      {name:'גב חולית',sec:'מק\' 44–45',info:'הטמנה בתשלום',badge:'הטמנה',bc:'#D4A843'},
+      {name:'מצפה רמון',sec:'מק\' 43',info:'עיר מלאה',badge:'אמין',bc:'#7A9B6E'},
+      {name:'חוד עקב – הרט"ג',sec:'מק\' 40',info:'שתיה בלבד!',badge:'הרט"ג',bc:'#5BA3C9'},
+    ]},
+  food:{icon:'🛒',color:'#6BAA5A',label:'אספקת מזון',alert:'תכננו 3–4 ימים בין עצירות. 46-53 כמעט אין!',alertBg:'rgba(107,170,90,.1)',alertClr:'#9fcf8e',
+    points:[
+      {name:'אילת',sec:'מק\' 56 – פתיחה',info:'עיר מלאה – קנו הכל!',badge:'מלא',bc:'#6BAA5A'},
+      {name:'מצפה רמון',sec:'מק\' 43',info:'רמי לוי + מסעדות',badge:'מלא',bc:'#6BAA5A'},
+      {name:'ספיר',sec:'מק\' 45–46',info:'מינימרקט',badge:'בסיסי',bc:'#888'},
+      {name:'שחרות',sec:'מק\' 50–51',info:'שופרסל אונליין (5 ימים)',badge:'הזמנה',bc:'#D4A843'},
+      {name:'שיטים',sec:'מק\' 48–49',info:'ארוחה צמחונית',badge:'מסעדה',bc:'#888'},
+      {name:'נאות סמדר',sec:'מק\' 49',info:'מסעדה + לינה',badge:'מסעדה',bc:'#888'},
+      {name:'פארק תמנע',sec:'מק\' 52',info:'חנות קטנה',badge:'בסיסי',bc:'#888'},
+      {name:'באר אורה',sec:'מק\' 53',info:'מינימרקט – סטייה',badge:'בסיסי',bc:'#888'},
+    ]},
+  angel:{icon:'😇',color:'#D4A843',label:'מלאכי שביל',alert:'24 שעות מראש! שביליסטים ברצף בלבד.',alertBg:'rgba(212,168,67,.1)',alertClr:'#D4A843',
+    points:[
+      {name:'אילת – נדב',sec:'מק\' 56',info:'לינה, מקלחת, WIFI',badge:'אישי',bc:'#D4A843'},
+      {name:'בי"ס שדה אילת',sec:'מק\' 56',info:'60₪, שירותים',badge:'מוסדי',bc:'#E8873A'},
+      {name:'קיבוץ אליפז',sec:'מק\' 53–54',info:'ללא תיאום!',badge:'קיבוץ',bc:'#5BA3C9'},
+      {name:'שחרות – עמיר',sec:'מק\' 50–51',info:'מייל בלבד, 5 ימים מראש',badge:'אישי',bc:'#D4A843'},
+      {name:'נאות סמדר',sec:'מק\' 49',info:'לינה בהתנדבות',badge:'קיבוץ',bc:'#5BA3C9'},
+      {name:'שיטים',sec:'מק\' 48–49',info:'25-75₪, ארוחות',badge:'תשלום',bc:'#E8873A'},
+      {name:'מצפה רמון – כמה מלאכים',sec:'מק\' 42–43',info:'עד 3 מלאכים בעיר',badge:'אישי',bc:'#D4A843'},
+    ]},
+  camp:{icon:'🏕️',color:'#C4612A',label:'חניוני לינה',alert:'רוב החניונים בדרום – ללא מים! הגיעו עם מים.',alertBg:'rgba(196,97,42,.1)',alertClr:'#E8873A',
+    points:[
+      {name:'בי"ס שדה אילת',sec:'מק\' 56',info:'שירותים, מים, 60₪',badge:'מצוין',bc:'#7A9B6E'},
+      {name:'חניון הר יהורם',sec:'מק\' 55–56',info:'הרט"ג, נוף',badge:'מים',bc:'#5BA3C9'},
+      {name:'קיבוץ אליפז',sec:'מק\' 53–54',info:'ללא תיאום, מקלחות',badge:'מעולה',bc:'#7A9B6E'},
+      {name:'חניון רחם עתק',sec:'מק\' 53',info:'הרט"ג',badge:'מים',bc:'#5BA3C9'},
+      {name:'פארק תמנע',sec:'מק\' 52',info:'מחיר מוזל',badge:'מים',bc:'#7A9B6E'},
+      {name:'חאן שחרות (חניון הנוודים)',sec:'מק\' 50–51',info:'מים + לינה',badge:'מים',bc:'#7A9B6E'},
+      {name:'חניון חולות כסוי',sec:'מק\' 49–50',info:'אין מים!',badge:'ללא מים',bc:'#888'},
+      {name:'חניון שיזפון',sec:'מק\' 49',info:'בלתי מוכרז, אין מים',badge:'ללא מים',bc:'#888'},
+      {name:'שיטים – אשראם',sec:'מק\' 48–49',info:'25-75₪, ארוחות',badge:'תשלום',bc:'#E8873A'},
+      {name:'חניון ציחור (מפגש פארן)',sec:'מק\' 47–48',info:'הרט"ג! ק"ש לאחד',badge:'מים',bc:'#5BA3C9'},
+      {name:'חניון נחל ברק',sec:'מק\' 46–47',info:'הרט"ג! נגיש לכל רכב',badge:'מים',bc:'#5BA3C9'},
+      {name:'חניון גב חולית',sec:'מק\' 44–45',info:'הטמנה, ק"ש רכב שטח',badge:'הטמנה',bc:'#D4A843'},
+      {name:'חניון בארות',sec:'מק\' 43–44',info:'סטייה 3 ק"מ',badge:'יש מים',bc:'#7A9B6E'},
+      {name:'חניון גוונים (סהרונים)',sec:'מק\' 43',info:'ברז ליד כביש 40',badge:'ברז',bc:'#5BA3C9'},
+      {name:'בי"ס שדה הר הנגב',sec:'מק\' 42–43',info:'קמפינג חינם',badge:'חינם',bc:'#7A9B6E'},
+    ]},
+};
+
+// GEAR
+const GEAR=[
+  {cat:'ביגוד',note:'עדיף לא כותנה',items:[
+    {n:'חולצות (2-3, אחת ארוכה)',d:'personal'},{n:'תחתונים (3-4)',d:'personal'},
+    {n:'מכנסיים (2)',d:'personal'},{n:'גרביים איכותיות (3-4 זוגות)',d:'personal'},
+    {n:'כובע רחב שוליים',d:'personal'},{n:'פליז + כובע צמר',d:'personal'},
+    {n:'סט טרמי + ליינר לשק"ש',d:'personal'},
+    {n:'משקפי שמש',d:'personal'},{n:'באף / חמצוואר',d:'personal'},
+    {n:'כפכפים / סנדלים (ללינה)',d:'personal'},
+  ]},
+  {cat:'בישול',items:[
+    {n:'סיר קטן עם מכסה',d:'group'},{n:'בלון גז קטן',d:'group'},
+    {n:'ראש גזייה + מצית',d:'group'},{n:'ערכת תבלינים',d:'group'},
+    {n:'שמן זית (קטן)',d:'group'},{n:'כף לבישול ואכילה',d:'personal'},
+    {n:'כוסות לקפה/תה',d:'group'},{n:'סכין חיתוך',d:'group'},
+    {n:'גפרורים (גיבוי)',d:'group'},{n:'שקיות אטומות לאוכל',d:'group'},
+  ]},
+  {cat:'ציוד חובה',items:[
+    {n:'2 מקלות הליכה – חובה!',d:'personal'},
+    {n:'ערכת עזרה ראשונה',d:'group'},
+    {n:'פנס ראש',d:'personal'},{n:'טלפון',d:'personal'},
+    {n:'מטען נייד',d:'personal'},{n:'מזרון שטח',d:'personal'},
+    {n:'כסף + תעודה מזהה',d:'personal'},
+  ]},
+  {cat:'כלי רחצה',items:[
+    {n:'משחה + מברשת שיניים',d:'personal'},{n:'דאודורנט',d:'personal'},
+    {n:'קרם הגנה',d:'personal'},{n:'סבון / שמפו',d:'personal'},
+    {n:'אלכוג\'ל',d:'personal'},
+  ]},
+  {cat:'לינה וקבוצתי',items:[
+    {n:'אוהל / טארפ',d:'group'},{n:'שק שינה',d:'personal'},
+    {n:'שקיות אשפה',d:'group'},{n:'נייר טואלט',d:'group'},
+    {n:'קלפים',d:'group'},{n:'שקיות זיפ-לוק',d:'group'},
+    {n:'מיתר טקטי',d:'group'},{n:'חבל כביסה',d:'group'},
+    {n:'איזולירבנד / נקרופלסט',d:'group'},{n:'קוצץ ציפורניים',d:'group'},
+  ]},
+  {cat:'לא חובה',items:[
+    {n:'שלוקר',d:'personal'},{n:'מגן רוח לגזייה',d:'group'},
+    {n:'מגבת',d:'personal'},{n:'אוזניות / רמקול',d:'personal'},
+    {n:'ספר / עט ויומן',d:'personal'},{n:'משרוקית',d:'group'},
+    {n:'מפה / ספר שביל',d:'group'},
+  ]},
+];
+
+const PC=['#E8873A','#5BA3C9','#7A9B6E','#D4A843','#B87BC9','#E05A5A','#5ABDB8','#B8925A','#A0C0E0','#E0A0C0','#70C070','#C07070'];
+
+// ══ STATE ══
+let activePOI=null;
+let participants=['דני','רון','נועה','עמית'];
+let gearState={};
+let customItems={};
+
+// ══ INIT ══
+window.addEventListener('DOMContentLoaded',()=>{
+  buildMapSecPanel();
+  buildSecTable();
+  buildWaterTable();
+  buildPaidContacts();
+  buildAngels();
+  buildParticipants();
+  buildGear();
+  initRoute();
+});
+
+// ══ VIEW SWITCH ══
+function sv(name,btn){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
+  document.getElementById('v'+name).classList.add('on');
+  if(btn)btn.classList.add('on');
+}
+
+// ══ DIRECTION TOGGLE ══
+function setDir(d){
+  dirSN=(d==='sn');
+  document.getElementById('dir-sn').classList.toggle('on',dirSN);
+  document.getElementById('dir-ns').classList.toggle('on',!dirSN);
+  buildMapSecPanel();
+}
+
+// ══ MAP SEC PANEL ══
+const SEC_COORDS={
+  56:{lat:29.56,lng:34.96},55:{lat:29.65,lng:34.98},54:{lat:29.72,lng:34.97},
+  53:{lat:29.82,lng:34.98},52:{lat:29.88,lng:34.98},51:{lat:29.94,lng:35.00},
+  50:{lat:30.03,lng:35.03},49:{lat:30.12,lng:35.05},48:{lat:30.22,lng:34.98},
+  47:{lat:30.32,lng:34.92},46:{lat:30.40,lng:35.02},45:{lat:30.45,lng:35.06},
+  44:{lat:30.52,lng:34.92},43:{lat:30.60,lng:34.82},42:{lat:30.62,lng:34.80},
+  41:{lat:30.72,lng:34.77},40:{lat:30.82,lng:34.75},39:{lat:30.92,lng:34.73},
+  38:{lat:30.98,lng:35.00},37:{lat:31.05,lng:35.06},
+};
+function buildMapSecPanel(){
+  const dC={easy:'#7A9B6E',medium:'#E8873A',hard:'#E05A5A'};
+  const dL={easy:'קל',medium:'בינוני',hard:'קשה'};
+  // dirSN=true: display 56 first (south to north direction of travel)
+  // Arrow: S→N means walking FROM southern point (from) TO northern point (to)
+  // So label shows: מ-[from(south)] ← [to(north)] = arrow points south (you walk northward)
+  document.getElementById('msp-list').innerHTML=SEC().map(s=>`
+    <div class="msp-item" id="msp-${s.num}" onclick="mspClick(${s.num})">
+      <div class="msp-num">מקטע ${s.num}</div>
+      <div class="msp-name">${dirSN ? s.from+'→'+s.to : s.to+'→'+s.from}</div>
+      <div class="msp-km">${s.km} ק"מ</div>
+      <div class="msp-tags">
+        <span class="msp-tag" style="background:${dC[s.diff]}22;color:${dC[s.diff]};border:1px solid ${dC[s.diff]};">${dL[s.diff]}</span>
+        ${s.angels.length?`<span class="msp-tag" style="background:rgba(212,168,67,.15);color:var(--gold);border:1px solid rgba(212,168,67,.3);">😇</span>`:''}
+        ${s.water[0].includes('הטמנה')?`<span class="msp-tag" style="background:rgba(196,97,42,.2);color:var(--orange);border:1px solid var(--tc);">💰</span>`:''}
+      </div>
+    </div>`).join('');
+}
+
+function mspClick(num){
+  document.querySelectorAll('.msp-item').forEach(x=>x.classList.remove('on'));
+  const el=document.getElementById('msp-'+num);
+  if(el){el.classList.add('on');el.scrollIntoView({behavior:'smooth',block:'nearest'});}
+  const s=SEC_RAW.find(x=>x.num===num);if(!s)return;
+  const dC={easy:'#7A9B6E',medium:'#E8873A',hard:'#E05A5A'};
+  const dL={easy:'קל',medium:'בינוני',hard:'קשה'};
+  const tip=document.getElementById('msp-tooltip');
+  tip.style.display='block';
+
+  // S→N tooltip: "from" is southern point, "to" is northern
+  tip.innerHTML=`
+    <div style="font-size:.6rem;color:var(--orange);font-weight:700;margin-bottom:3px;">מקטע ${s.num} | ${s.km} ק"מ | <span style="color:${dC[s.diff]}">${dL[s.diff]}</span></div>
+    <div style="font-size:.85rem;font-family:'Frank Ruhl Libre',serif;color:var(--cream);margin-bottom:5px;">${s.from} ← ${s.to}</div>
+    <div style="font-size:.67rem;color:#8cc9e0;margin-bottom:2px;">💧 ${s.water[0]}</div>
+    ${s.angels.length?`<div style="font-size:.63rem;color:var(--gold);">😇 ${s.angels[0]}</div>`:''}
+    ${s.camps[0]?`<div style="font-size:.63rem;color:var(--sand);">🏕️ ${s.camps[0]}</div>`:''}
+    ${s.note?`<div style="font-size:.62rem;color:rgba(232,213,176,.55);margin-top:4px;">${s.note}</div>`:''}
+    <div style="font-size:.58rem;color:rgba(232,213,176,.3);margin-top:5px;">לחיצה פותחת מפה גוגל למקטע זה</div>`;
+
+  // Open Google Maps centered on section start coord in new tab
+  const coord=SEC_COORDS[num];
+  if(coord){
+    const iframe=document.getElementById('spni-map');
+    iframe.style.boxShadow=`0 0 0 3px var(--tc)`;
+    setTimeout(()=>iframe.style.boxShadow='',1800);
+    // Add clickable link to open google maps to section location
+    const existLink=document.getElementById('msp-gmaps-link');
+    if(existLink)existLink.remove();
+    const link=document.createElement('a');
+    link.id='msp-gmaps-link';
+    link.href=`https://maps.google.com/?q=${coord.lat},${coord.lng}&z=13`;
+    link.target='_blank';
+    link.rel='noopener';
+    link.style.cssText='display:block;margin-top:6px;font-size:.65rem;color:var(--sky);text-decoration:none;padding:4px 8px;background:rgba(107,164,196,.1);border:1px solid rgba(107,164,196,.2);border-radius:7px;text-align:center;';
+    link.textContent=`פתח מפה למקטע ${num} ←`;
+    tip.appendChild(link);
+  }
+}
+
+// ══ MAP POI ══
+function mibPOI(type,btn){
+  if(activePOI===type){closePOIPanel();return;}
+  activePOI=type;
+  document.querySelectorAll('.mib-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  const d=POI_DEF[type];
+  const cards=d.points.map(p=>`
+    <div class="poi-card">
+      <div class="pc-name">${d.icon} ${p.name}</div>
+      <div class="pc-sec">📍 ${p.sec}</div>
+      <div class="pc-info">${p.info}</div>
+      <span class="pc-badge" style="background:${p.bc}22;border:1px solid ${p.bc};color:${p.bc};">${p.badge}</span>
+    </div>`).join('');
+  const panel=document.getElementById('poi-panel');
+  panel.innerHTML=`
+    <div class="pp-head">
+      <div class="pp-hl"><span class="pp-ico">${d.icon}</span><div><div class="pp-title">${d.label}</div><div class="pp-sub">${d.points.length} נקודות</div></div></div>
+      <button class="pp-x" onclick="closePOIPanel()">✕</button>
+    </div>
+    ${cards}
+    <div class="pp-alert" style="background:${d.alertBg};color:${d.alertClr};">${d.alert}</div>`;
+  panel.style.display='flex';panel.style.flexDirection='column';
+}
+function closePOIPanel(){
+  document.getElementById('poi-panel').style.display='none';
+  document.querySelectorAll('.mib-btn').forEach(b=>b.classList.remove('on'));
+  activePOI=null;
+}
+
+// ══ INFO TABLE ══
+function buildSecTable(){
+  const dL={easy:'קל',medium:'בינוני',hard:'קשה'},dC={easy:'de',medium:'dm',hard:'dh'};
+  // display S→N (56 first)
+  const rows=[...SEC_RAW].reverse();
+  document.getElementById('sec-tbl').innerHTML=`
+    <thead><tr>
+      <th>מק'</th><th style="white-space:nowrap">מ-</th><th style="white-space:nowrap">עד</th>
+      <th>ק"מ</th><th>קושי</th><th>מים</th><th>מלאכים</th><th>לינה</th><th>מזון</th><th>הערה</th>
+    </tr></thead>
+    <tbody>${rows.map(s=>`
+      <tr>
+        <td style="white-space:nowrap"><strong style="color:var(--orange)">${s.num}</strong></td>
+        <td style="white-space:nowrap;color:var(--cream)">${s.from}</td>
+        <td style="white-space:nowrap;color:var(--cream)">${s.to}</td>
+        <td style="white-space:nowrap">${s.km}</td>
+        <td style="white-space:nowrap"><span class="db ${dC[s.diff]}">${dL[s.diff]}</span></td>
+        <td style="min-width:120px;line-height:1.65;">${s.water.join('<br>')}</td>
+        <td style="min-width:110px;line-height:1.65;">${s.angels.length?s.angels.join('<br>'):'–'}</td>
+        <td style="min-width:110px;line-height:1.65;">${s.camps.join('<br>')}</td>
+        <td style="min-width:90px;line-height:1.65;">${s.food.join('<br>')}</td>
+        <td style="min-width:140px;max-width:240px;font-size:.65rem;line-height:1.6;color:rgba(232,213,176,.65);">${s.note||'–'}</td>
+      </tr>`).join('')}
+    </tbody>`;
+}
+
+// ══ WATER TABLE ══
+function buildWaterTable(){
+  const typeMap={
+    rtg:{label:'הרט"ג',bg:'rgba(91,163,201,.2)',clr:'#5BA3C9'},
+    fixed:{label:'קבוע',bg:'rgba(122,155,110,.2)',clr:'#9fcf8e'},
+    city:{label:'יישוב',bg:'rgba(232,135,58,.2)',clr:'var(--orange)'},
+    cache:{label:'הטמנה',bg:'rgba(196,97,42,.85)',clr:'white'},
+    natural:{label:'טיהור',bg:'rgba(139,58,26,.2)',clr:'#ff8a5a'},
+  };
+  document.getElementById('water-tbl').innerHTML=`
+    <thead><tr>
+      <th>שם / מיקום</th><th style="white-space:nowrap">מקטע</th>
+      <th style="min-width:120px">סטייה</th><th>סוג</th><th>פרטים</th>
+    </tr></thead>
+    <tbody>${WATER.map(w=>{
+      const t=typeMap[w.type];
+      return`<tr ${w.cache?'style="background:rgba(196,97,42,.06);"':''}>
+        <td style="color:var(--cream);${w.cache?'font-weight:700;':''};white-space:nowrap">${w.cache?'💰 ':''} ${w.name}</td>
+        <td style="color:var(--orange);white-space:nowrap">${w.sec}</td>
+        <td style="${w.detour?'color:#8cc4e8;':''}font-size:.68rem;line-height:1.5;">${w.detour?'↗ ':''} ${w.dev}</td>
+        <td><span class="wbadge" style="background:${t.bg};color:${t.clr};white-space:nowrap;">${t.label}</span></td>
+        <td style="line-height:1.65;min-width:150px;">${w.info}</td>
+      </tr>`;}).join('')}
+    </tbody>`;
+}
+
+function buildPaidContacts(){
+  document.getElementById('paid-contacts').innerHTML=PAID.map(p=>`
+    <div class="paid-card">
+      <div class="paid-name">${p.name}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+        ${p.phone?`<span class="paid-phone">${p.phone}</span>`:''}
+        ${p.email?`<span class="paid-phone" style="background:rgba(107,164,196,.15);border-color:var(--sky);color:var(--sky);">${p.email}</span>`:''}
+      </div>
+      <div class="paid-srv">${p.srv}</div>
+    </div>`).join('');
+}
+
+// ══ ANGELS ══
+function buildAngels(){
+  document.getElementById('angels-list').innerHTML=ANGELS.map(a=>`
+    <div class="angel-card">
+      <div class="angel-title">${a.loc}</div>
+      <div class="angel-sec">${a.sec}</div>
+      <div class="angel-info">${a.srv}</div>
+      ${a.phone?`<div><span class="angel-phone">${a.phone}</span></div>`:''}
+      ${a.note?`<div class="angel-note">${a.note}</div>`:''}
+    </div>`).join('');
+}
+
+// ══ GEAR ══
+function buildParticipants(){
+  const n=parseInt(document.getElementById('np').value)||4;
+  while(participants.length<n)participants.push(`מטייל ${participants.length+1}`);
+  participants=participants.slice(0,n);
+  document.getElementById('pnames').innerHTML=participants.map((p,i)=>`
+    <div class="pnw">
+      <span class="pcd" style="background:${PC[i%PC.length]}"></span>
+      <input class="pni" value="${p}" oninput="upName(${i},this.value)">
+    </div>`).join('');
+}
+function rebuildP(){buildParticipants();buildGear();}
+function upName(i,v){participants[i]=v;buildGear();updSum();}
+
+function buildGear(){
+  let h='';
+  GEAR.forEach((cat,ci)=>{
+    const emoji={ביגוד:'👕',בישול:'🍳','ציוד חובה':'🥾','כלי רחצה':'🧴','לינה וקבוצתי':'🎒','לא חובה':'🎵'}[cat.cat]||'📦';
+    h+=`<div class="gcat"><h3>${emoji} ${cat.cat}</h3>`;
+    if(cat.note)h+=`<div style="font-size:.65rem;color:rgba(232,213,176,.4);margin-bottom:6px;">${cat.note}</div>`;
+    cat.items.forEach((item,ii)=>{
+      const k=`${ci}-${ii}`;
+      if(!gearState[k])gearState[k]={type:item.d,assignee:'',hidden:false,custom:false};
+      h+=renderGI(k,item.n,false);
+    });
+    (customItems[ci]||[]).forEach((item,idx)=>{
+      const k=`custom-${ci}-${idx}`;
+      if(!gearState[k])gearState[k]={type:'personal',assignee:'',hidden:false,custom:true};
+      h+=renderGI(k,item.label,true);
+    });
+    h+=`<div class="add-item-row">
+      <input class="g-add-input" id="ai-${ci}" placeholder="הוסיפו ציוד נוסף…" onkeydown="if(event.key==='Enter')addCI(${ci})">
+      <button class="g-add-btn" onclick="addCI(${ci})">+ הוסף</button>
+    </div></div>`;
+  });
+  document.getElementById('glist').innerHTML=h;
+  updSum();
+}
+
+function renderGI(k,label,isCustom){
+  const st=gearState[k];
+  const ai=participants.indexOf(st.assignee);
+  const ac=ai>=0?PC[ai%PC.length]:'var(--sand)';
+  const assigneeTag=st.assignee?`<span style="padding:1px 6px;border-radius:7px;background:${ac}22;border:1px solid ${ac};color:${ac};font-size:.6rem;white-space:nowrap;">● ${st.assignee}</span>`:'';
+  return`<div class="gi${st.hidden?' hidden-item':''}">
+    <span class="gn ${st.hidden?'':''}"> ${label}</span>
+    ${isCustom
+      ?`<button class="g-del-btn" onclick="deleteCustom('${k}')">מחק</button>`
+      :`<button class="g-hide-btn" onclick="toggleHide('${k}')">${st.hidden?'↩':'❌'}</button>`
+    }
+    ${!st.hidden?`
+    <div class="gtyp">
+      <button class="gtb ${st.type==='group'?'ga':''}" onclick="stype('${k}','group')">קב'</button>
+      <button class="gtb ${st.type==='personal'?'pa':''}" onclick="stype('${k}','personal')">אישי</button>
+    </div>
+    <div class="gas">
+      ${st.type==='group'
+        ?`<select class="asel" data-key="${k}" onchange="sassy('${k}',this.value)">
+            <option value="">— מי מביא? —</option>
+            ${participants.map((p,j)=>`<option value="${p}" ${p===st.assignee?'selected':''}>${p}</option>`).join('')}
+          </select>`
+        :(st.assignee?assigneeTag:'<span></span>')
+      }
+    </div>`:''}
+  </div>`;
+}
+
+function deleteCustom(k){
+  const parts=k.split('-');
+  const ci=parseInt(parts[1]),idx=parseInt(parts[2]);
+  customItems[ci].splice(idx,1);
+  delete gearState[k];
+  // Rebuild custom keys for this cat
+  (customItems[ci]||[]).forEach((_,newIdx)=>{
+    const newKey=`custom-${ci}-${newIdx}`;
+    if(!gearState[newKey])gearState[newKey]={type:'personal',assignee:'',hidden:false,custom:true};
+  });
+  buildGear();
+}
+function addCI(ci){
+  const inp=document.getElementById('ai-'+ci);
+  const label=(inp.value||'').trim();if(!label)return;
+  if(!customItems[ci])customItems[ci]=[];
+  customItems[ci].push({label});inp.value='';buildGear();
+}
+function stype(k,t){gearState[k].type=t;buildGear();}
+function sassy(k,v){gearState[k].assignee=v;buildGear();}
+function toggleHide(k){gearState[k].hidden=!gearState[k].hidden;if(gearState[k].hidden)gearState[k].assignee='';buildGear();}
+
+function updSum(){
+  const a=Object.entries(gearState).filter(([,x])=>!x.hidden);
+  const h=Object.values(gearState).filter(x=>x.hidden).length;
+  document.getElementById('st').textContent=a.length;
+  document.getElementById('sh').textContent=h;
+  document.getElementById('sg').textContent=a.filter(([,x])=>x.type==='group').length;
+  document.getElementById('sp').textContent=a.filter(([,x])=>x.type==='personal').length;
+}
+
+function getLabelForKey(k){
+  if(k.startsWith('custom-')){const p=k.split('-');return customItems[parseInt(p[1])]?.[parseInt(p[2])]?.label||'?';}
+  const [ci,ii]=k.split('-').map(Number);return GEAR[ci]?.items[ii]?.n||'?';
+}
+function getCatForKey(k){
+  if(k.startsWith('custom-'))return GEAR[parseInt(k.split('-')[1])]?.cat||'אחר';
+  return GEAR[parseInt(k.split('-')[0])]?.cat||'אחר';
+}
+
+// ══ GEAR EXPORT ══
+function openExport(){
+  const byP={};
+  Object.entries(gearState).forEach(([k,st])=>{
+    if(st.hidden)return;
+    const label=getLabelForKey(k),cat=getCatForKey(k);
+    const key=st.type==='group'?(st.assignee||'קבוצה – לא הוקצה'):(st.assignee||'אישי – לא הוקצה');
+    if(!byP[key])byP[key]=[];
+    byP[key].push({label,cat,type:st.type});
+  });
+  let h=`<table class="etbl"><thead><tr><th>אחראי</th><th>פריט</th><th>קטגוריה</th><th>סוג</th></tr></thead><tbody>`;
+  Object.entries(byP).forEach(([person,items])=>{
+    h+=`<tr class="grp-row"><td colspan="4">${person}</td></tr>`;
+    items.forEach(r=>{h+=`<tr><td></td><td>${r.label}</td><td style="opacity:.6">${r.cat}</td><td>${r.type==='group'?"קבוצתי":"אישי"}</td></tr>`;});
+  });
+  h+='</tbody></table>';
+  document.getElementById('export-content').innerHTML=h;
+  const pp=document.getElementById('per-person-btns');
+  pp.innerHTML=participants.map((p,i)=>`<button class="mbtn" style="background:${PC[i%PC.length]}22;border:1px solid ${PC[i%PC.length]};color:${PC[i%PC.length]};border-radius:8px;padding:6px 12px;cursor:pointer;font-family:Heebo,sans-serif;font-size:.72rem;" onclick="exportExcelPerson('${p}')">אקסל – ${p}</button>`).join('');
+  document.getElementById('export-modal').style.display='flex';
+}
+function closeExport(){document.getElementById('export-modal').style.display='none';}
+
+function makeXLStyle(wb,ws,headerRow){
+  // RTL worksheet
+  if(!ws['!sheet'])ws['!sheet']={};
+  ws['!sheet'].rightToLeft=true;
+  // style headers
+  const range=XLSX.utils.decode_range(ws['!ref']||'A1');
+  for(let c=range.s.c;c<=range.e.c;c++){
+    const addr=XLSX.utils.encode_cell({r:headerRow,c});
+    if(!ws[addr])continue;
+    ws[addr].s={font:{bold:true,color:{rgb:'C4612A'}},fill:{fgColor:{rgb:'1A0A00'}},alignment:{horizontal:'right'}};
+  }
+  return ws;
+}
+
+function getPersonRows(person){
+  const rows=[];
+  Object.entries(gearState).forEach(([k,st])=>{
+    if(st.hidden)return;
+    const label=getLabelForKey(k),cat=getCatForKey(k);
+    if(st.type==='personal'&&(!st.assignee||st.assignee===person)){
+      rows.push([label,cat,'אישי',person]);
+    } else if(st.type==='group'&&st.assignee===person){
+      rows.push([label,cat,'קבוצתי – אחראי',person]);
+    }
+  });
+  return rows;
+}
+
+function exportExcelPerson(person){
+  const rows=getPersonRows(person);
+  const wsData=[
+    [`רשימת ציוד – שביל ישראל הדרום`,'','',''],
+    [`משתתף: ${person}`,'','',''],
+    [],
+    ['פריט','קטגוריה','סוג','אחראי'],
+    ...rows
+  ];
+  const ws=XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols']=[{wch:32},{wch:16},{wch:16},{wch:16}];
+  ws['!sheet']={rightToLeft:true};
+  // bold header row 3 (0-indexed)
+  const hdr=3;
+  ['A','B','C','D'].forEach(col=>{
+    const addr=col+(hdr+1);
+    if(ws[addr])ws[addr].s={font:{bold:true,color:{rgb:'FF8C00'}},fill:{fgColor:{rgb:'180800'}}};
+  });
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,person.substring(0,31));
+  XLSX.writeFile(wb,`ציוד_שביל_${person}.xlsx`);
+}
+
+function exportExcelAll(){
+  const wb=XLSX.utils.book_new();
+  participants.forEach(person=>{
+    const rows=getPersonRows(person);
+    const wsData=[['פריט','קטגוריה','סוג','אחראי'],...rows];
+    const ws=XLSX.utils.aoa_to_sheet(wsData);
+    ws['!cols']=[{wch:32},{wch:16},{wch:16},{wch:16}];
+    ws['!sheet']={rightToLeft:true};
+    ['A','B','C','D'].forEach(col=>{const addr=col+'1';if(ws[addr])ws[addr].s={font:{bold:true,color:{rgb:'FF8C00'}}};});
+    XLSX.utils.book_append_sheet(wb,ws,person.substring(0,31));
+  });
+  // summary sheet
+  const allRows=[];
+  Object.entries(gearState).forEach(([k,st])=>{
+    if(!st.hidden)allRows.push([getLabelForKey(k),getCatForKey(k),st.type==='group'?"קבוצתי":"אישי",st.assignee||'–']);
+  });
+  const wsAll=XLSX.utils.aoa_to_sheet([['פריט','קטגוריה','סוג','אחראי'],...allRows]);
+  wsAll['!cols']=[{wch:32},{wch:16},{wch:12},{wch:18}];
+  wsAll['!sheet']={rightToLeft:true};
+  ['A','B','C','D'].forEach(col=>{const addr=col+'1';if(wsAll[addr])wsAll[addr].s={font:{bold:true,color:{rgb:'FF8C00'}}};});
+  XLSX.utils.book_append_sheet(wb,wsAll,'סיכום כולל');
+  XLSX.writeFile(wb,'ציוד_שביל_ישראל.xlsx');
+}
+
+// ══ ROUTE PLANNER – wizard style ══
+let routeDays=[];
+let selSecs=new Set();
+
+function initRoute(){
+  buildRouteSectionList();
+  renderDays();
+}
+
+function buildRouteSectionList(){
+  const ordered=[...SEC_RAW].reverse();
+  document.getElementById('route-sec-list').innerHTML=ordered.map(s=>`
+    <div class="rsec-item ${selSecs.has(s.num)?'sel':''}" id="rsec-${s.num}" onclick="toggleRouteSec(${s.num})">
+      <div class="rsec-cb"><span class="rsec-ck">✓</span></div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:baseline;gap:4px;">
+          <span class="rsec-num">${s.num}</span>
+          <span class="rsec-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.from}→${s.to}</span>
+        </div>
+        <span class="rsec-km">${s.km} ק"מ</span>
+      </div>
+    </div>`).join('');
+  updateSelCount();
+}
+
+function toggleRouteSec(num){
+  if(selSecs.has(num))selSecs.delete(num);
+  else selSecs.add(num);
+  const el=document.getElementById('rsec-'+num);
+  if(el)el.classList.toggle('sel',selSecs.has(num));
+  updateSelCount();
+}
+
+function updateSelCount(){
+  const n=selSecs.size;
+  document.getElementById('sel-count').textContent=n?`${n} מקטעים נבחרו`:'בחרו מקטעים מהרשימה';
+  const btn=document.getElementById('btn-add-walk');
+  if(btn)btn.disabled=(n===0);
+}
+
+function addDayFromSel(type){
+  const secs=type==='walk'?[...selSecs].sort((a,b)=>a-b):[];
+  let gapDesc='';
+  const prevWalkDay=[...routeDays].reverse().find(d=>d.type==='walk'&&d.secs.length>0);
+  if(type==='walk'&&prevWalkDay&&secs.length){
+    const lastPrev=Math.max(...prevWalkDay.secs);
+    const firstCur=Math.min(...secs);
+    if(Math.abs(lastPrev-firstCur)>1) gapDesc=`__GAP__${lastPrev}_${firstCur}`;
+  }
+  routeDays.push({type,secs,note:'',gapDesc,gapNote:''});
+  selSecs.clear();
+  buildRouteSectionList();
+  renderDays();
+  const btnF=document.getElementById('btn-finish');
+  if(btnF)btnF.disabled=routeDays.filter(d=>d.type==='walk'&&d.secs.length).length===0;
+}
+
+function deleteDay(idx){
+  routeDays.splice(idx,1);
+  renderDays();
+  const btnF=document.getElementById('btn-finish');
+  if(btnF)btnF.disabled=routeDays.filter(d=>d.type==='walk'&&d.secs.length).length===0;
+}
+
+function renderDays(){
+  const container=document.getElementById('route-right');
+  const emptyEl=document.getElementById('route-empty');
+  container.querySelectorAll('.route-day-card,.route-finish-panel').forEach(e=>e.remove());
+  if(!routeDays.length){if(emptyEl)emptyEl.style.display='block';return;}
+  if(emptyEl)emptyEl.style.display='none';
+  routeDays.forEach((day,idx)=>{
+    const div=document.createElement('div');
+    div.className='route-day-card';
+    const dayKm=day.secs.reduce((s,n)=>{const sec=SEC_RAW.find(x=>x.num===n);return s+(sec?sec.km:0);},0);
+    let gapHTML='';
+    if(day.gapDesc&&day.gapDesc.startsWith('__GAP__')){
+      const parts=day.gapDesc.replace('__GAP__','').split('_');
+      gapHTML=`<div class="rdc-gap">⚠️ דילוג מ-${parts[0]} ל-${parts[1]} – כיצד הגעתם?
+        <input placeholder="לדוגמה: נסיעה ברכב לנקודת הפתיחה..." value="${day.gapNote||''}" oninput="routeDays[${idx}].gapNote=this.value">
+      </div>`;
+    }
+    const secChips=day.secs.map(n=>{const s=SEC_RAW.find(x=>x.num===n);return`<span class="rdc-chip">${n} ${s?s.from.substring(0,6):''}…</span>`;}).join('');
+    let infoLines='';
+    if(day.type==='walk'&&day.secs.length){
+      const waters=[...new Set(day.secs.flatMap(n=>SEC_RAW.find(x=>x.num===n)?.water||[]))];
+      const camps=SEC_RAW.find(x=>x.num===Math.max(...day.secs))?.camps||[];
+      const food=[...new Set(day.secs.flatMap(n=>SEC_RAW.find(x=>x.num===n)?.food||[]))].filter(f=>f!=='אין');
+      const angels=[...new Set(day.secs.flatMap(n=>SEC_RAW.find(x=>x.num===n)?.angels||[]))];
+      if(waters[0])infoLines+=`<div>💧 ${waters[0]}</div>`;
+      if(camps[0])infoLines+=`<div>🏕️ ${camps[0]}</div>`;
+      if(food[0])infoLines+=`<div>🛒 ${food[0]}</div>`;
+      if(angels[0])infoLines+=`<div>😇 ${angels[0]}</div>`;
+    }
+    div.innerHTML=`
+      <div class="rdc-hdr">
+        <span class="rdc-day">יום ${idx+1}</span>
+        <span class="rdc-type-badge ${day.type==='walk'?'rdc-walk':'rdc-rest'}">${day.type==='walk'?'הליכה':'מנוחה'}</span>
+        ${day.type==='walk'&&dayKm>0?`<span class="rdc-km">${dayKm} ק"מ</span>`:''}
+        <button class="rdc-del" onclick="deleteDay(${idx})" title="מחק יום">✕</button>
+      </div>
+      ${gapHTML}
+      ${day.type==='walk'?`<div class="rdc-secs">${secChips||'<span style="font-size:.65rem;opacity:.4;">ריק</span>'}</div>`:'<div style="font-size:.72rem;color:var(--gold);padding:3px 0;">יום מנוחה / אקלום</div>'}
+      ${infoLines?`<div class="rdc-info">${infoLines}</div>`:''}
+      <textarea class="rdc-note" rows="1" placeholder="הערות ליום ${idx+1}..." oninput="routeDays[${idx}].note=this.value">${day.note}</textarea>`;
+    container.appendChild(div);
+  });
+}
+
+function finishRoute(){
+  const container=document.getElementById('route-right');
+  container.querySelectorAll('.route-finish-panel').forEach(e=>e.remove());
+  const walkDays=routeDays.filter(d=>d.type==='walk');
+  const allSecs=[...new Set(walkDays.flatMap(d=>d.secs))];
+  const totalKm=allSecs.reduce((s,n)=>{const sec=SEC_RAW.find(x=>x.num===n);return s+(sec?sec.km:0);},0);
+  const restDays=routeDays.filter(d=>d.type==='rest').length;
+  const panel=document.createElement('div');
+  panel.className='route-finish-panel';
+  panel.innerHTML=`
+    <div class="rfp-stats">
+      <div class="rfp-stat"><div class="rfp-val">${totalKm}</div><div class="rfp-lbl">קילומטר</div></div>
+      <div class="rfp-stat"><div class="rfp-val">${routeDays.length}</div><div class="rfp-lbl">ימים סה"כ</div></div>
+      <div class="rfp-stat"><div class="rfp-val">${walkDays.length}</div><div class="rfp-lbl">ימי הליכה</div></div>
+      <div class="rfp-stat"><div class="rfp-val">${restDays}</div><div class="rfp-lbl">ימי מנוחה</div></div>
+      <div class="rfp-stat"><div class="rfp-val">${allSecs.length}</div><div class="rfp-lbl">מקטעים</div></div>
+    </div>
+    <div class="rfp-btns">
+      <button class="gbtn gbtn-gold" onclick="openRouteModal()">📊 טבלת מסלול מלאה</button>
+      <button class="gbtn gbtn-sky"  onclick="exportRouteXL()">📥 ייצוא לאקסל</button>
+    </div>
+    <div class="route-map-embed">
+      <iframe src="https://experience.arcgis.com/experience/cb82523a09db431f9ed47f5645581be5/" title="מפת מסלול" allowfullscreen></iframe>
+    </div>`;
+  container.appendChild(panel);
+  panel.scrollIntoView({behavior:'smooth'});
+}
+
+function resetRoute(){
+  if(!confirm('לאפס את המסלול לחלוטין?'))return;
+  routeDays=[];selSecs.clear();
+  buildRouteSectionList();
+  renderDays();
+  const btnF=document.getElementById('btn-finish');
+  if(btnF)btnF.disabled=true;
+}
+
+function openRouteModal(){
+  let h=`<table class="etbl" style="font-size:.67rem;">
+    <thead><tr><th>יום</th><th>סוג</th><th>מקטעים</th><th>ק"מ</th><th>מים</th><th>מזון/אספקה</th><th>לינה</th><th>מלאכים</th><th>מעבר/הערות</th></tr></thead><tbody>`;
+  routeDays.forEach((day,idx)=>{
+    if(day.type==='rest'){
+      h+=`<tr><td>יום ${idx+1}</td><td><span style="color:var(--gold)">מנוחה</span></td><td colspan="7">${day.note||'–'}</td></tr>`;
+      return;
+    }
+    if(!day.secs.length){h+=`<tr><td>יום ${idx+1}</td><td>הליכה</td><td colspan="7">ריק</td></tr>`;return;}
+    const dayKm=day.secs.reduce((s,n)=>{const sec=SEC_RAW.find(x=>x.num===n);return s+(sec?sec.km:0);},0);
+    const waters=[...new Set(day.secs.flatMap(n=>SEC_RAW.find(x=>x.num===n)?.water||[]))];
+    const food=[...new Set(day.secs.flatMap(n=>SEC_RAW.find(x=>x.num===n)?.food||[]))].filter(f=>f!=='אין');
+    const camps=SEC_RAW.find(x=>x.num===Math.max(...day.secs))?.camps||[];
+    const angels=[...new Set(day.secs.flatMap(n=>SEC_RAW.find(x=>x.num===n)?.angels||[]))];
+    const gapNote=day.gapDesc?.startsWith('__GAP__')&&day.gapNote?`מעבר: ${day.gapNote}`:'';
+    const noteCell=[gapNote,day.note].filter(Boolean).join(' | ');
+    h+=`<tr>
+      <td>יום ${idx+1}</td><td>הליכה</td>
+      <td>${day.secs.join(', ')}</td>
+      <td style="font-weight:700;color:var(--orange)">${dayKm}</td>
+      <td style="font-size:.63rem">${waters.join('<br>')||'–'}</td>
+      <td style="font-size:.63rem">${food.join('<br>')||'–'}</td>
+      <td style="font-size:.63rem">${camps.join('<br>')||'שטח'}</td>
+      <td style="font-size:.63rem">${angels.join('<br>')||'–'}</td>
+      <td>${noteCell||'–'}</td>
+    </tr>`;
+  });
+  const allSecs=[...new Set(routeDays.filter(d=>d.type==='walk').flatMap(d=>d.secs))];
+  const totalKm=allSecs.reduce((s,n)=>{const sec=SEC_RAW.find(x=>x.num===n);return s+(sec?sec.km:0);},0);
+  h+=`<tr style="background:rgba(196,97,42,.12);"><td colspan="3"><strong>סה"כ</strong></td><td><strong style="color:var(--orange)">${totalKm} ק"מ</strong></td><td colspan="5">${routeDays.length} ימים | ${routeDays.filter(d=>d.type==='walk').length} ימי הליכה</td></tr>`;
+  h+='</tbody></table>';
+  document.getElementById('route-modal-content').innerHTML=h;
+  document.getElementById('route-modal').style.display='flex';
+}
+
+function exportRouteXL(){
+  const wsData=[['שביל ישראל – מסלול אישי','','','','','','','',''],[]
+    ,['יום','סוג','מקטעים','ק"מ','מים','מזון/אספקה','לינה','מלאכים','הערות/מעבר']];
+  routeDays.forEach((day,idx)=>{
+    if(day.type==='rest'){wsData.push([`יום ${idx+1}`,'מנוחה','–','–','–','–','–','–',day.note||'']);return;}
+    if(!day.secs.length){wsData.push([`יום ${idx+1}`,'הליכה','ריק','','','','','','']);return;}
+    const dayKm=day.secs.reduce((s,n)=>{const sec=SEC_RAW.find(x=>x.num===n);return s+(sec?sec.km:0);},0);
+    const waters=[...new Set(day.secs.flatMap(n=>SEC_RAW.find(x=>x.num===n)?.water||[]))];
+    const food=[...new Set(day.secs.flatMap(n=>SEC_RAW.find(x=>x.num===n)?.food||[]))].filter(f=>f!=='אין');
+    const camps=SEC_RAW.find(x=>x.num===Math.max(...day.secs))?.camps||[];
+    const angels=[...new Set(day.secs.flatMap(n=>SEC_RAW.find(x=>x.num===n)?.angels||[]))];
+    const gapNote=day.gapDesc?.startsWith('__GAP__')&&day.gapNote?`מעבר: ${day.gapNote}`:'';
+    const noteCell=[gapNote,day.note].filter(Boolean).join(' | ');
+    wsData.push([`יום ${idx+1}`,'הליכה',day.secs.join(', '),dayKm,waters.join(' | ')||'–',food.join(' | ')||'–',camps.join(' | ')||'שטח',angels.join(' | ')||'–',noteCell||'']);
+  });
+  const allSecs=[...new Set(routeDays.filter(d=>d.type==='walk').flatMap(d=>d.secs))];
+  const totalKm=allSecs.reduce((s,n)=>{const sec=SEC_RAW.find(x=>x.num===n);return s+(sec?sec.km:0);},0);
+  wsData.push([],[`סיכום: ${totalKm} ק"מ | ${routeDays.length} ימים | ${routeDays.filter(d=>d.type==='walk').length} ימי הליכה`]);
+  const ws=XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols']=[{wch:8},{wch:10},{wch:18},{wch:6},{wch:28},{wch:22},{wch:24},{wch:22},{wch:30}];
+  ws['!sheet']={rightToLeft:true};
+  ['A','B','C','D','E','F','G','H','I'].forEach(col=>{
+    const addr=col+'3';
+    if(ws[addr])ws[addr].s={font:{bold:true,color:{rgb:'FF8C00'}},fill:{fgColor:{rgb:'180800'}}};
+  });
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'מסלול');
+  XLSX.writeFile(wb,'מסלול_שביל_ישראל.xlsx');
+}
+
+</script>
+</body>
+</html>
